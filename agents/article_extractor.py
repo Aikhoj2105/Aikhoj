@@ -16,16 +16,24 @@ def fetch_page(url):
 
 
 def clean_html(html):
-    # Remove scripts and styles
+    # Remove comments
+    html = re.sub(r"<!--.*?-->", " ", html, flags=re.DOTALL)
+
+    # Remove scripts, styles and other non-content elements
     html = re.sub(
-        r"<(script|style).*?>.*?</\1>",
+        r"<(script|style|noscript|svg|nav|footer|header).*?>.*?</\1>",
         " ",
         html,
         flags=re.IGNORECASE | re.DOTALL
     )
 
-    # Remove HTML comments
-    html = re.sub(r"<!--.*?-->", " ", html, flags=re.DOTALL)
+    # Convert common block-level tags into line breaks
+    html = re.sub(
+        r"</(p|div|article|section|h1|h2|h3|h4|li|blockquote)>",
+        "\n",
+        html,
+        flags=re.IGNORECASE
+    )
 
     # Remove remaining HTML tags
     text = re.sub(r"<[^>]+>", " ", html)
@@ -33,10 +41,23 @@ def clean_html(html):
     # Decode HTML entities
     text = unescape(text)
 
-    # Normalize whitespace
-    text = re.sub(r"\s+", " ", text)
+    # Clean whitespace line-by-line
+    lines = []
 
-    return text.strip()
+    for line in text.splitlines():
+        line = re.sub(r"\s+", " ", line).strip()
+
+        if len(line) >= 30:
+            lines.append(line)
+
+    # Remove duplicate consecutive lines
+    cleaned = []
+
+    for line in lines:
+        if not cleaned or line != cleaned[-1]:
+            cleaned.append(line)
+
+    return "\n".join(cleaned)
 
 
 def extract_article(url):
@@ -59,7 +80,7 @@ def main():
     try:
         text = extract_article(url)
 
-        print("\n📄 Extracted text:")
+        print("\n📄 Cleaned article text:")
         print("=" * 60)
         print(text[:5000])
         print("=" * 60)
