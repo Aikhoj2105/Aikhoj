@@ -2158,6 +2158,81 @@ def save_verification_report(verifications, evidence_dataset, quality_summary=No
         lines.append("---")
         lines.append("")
 
+    if quality_summary:
+        script_ready_ids = quality_summary.get(
+            "script_ready_claims",
+            []
+        )
+
+        if script_ready_ids:
+            lines.append(
+                "## Script-Ready Claims"
+            )
+            lines.append("")
+
+            for claim_id in script_ready_ids:
+                for verification in verifications:
+                    try:
+                        verification_id = int(
+                            verification.get("claim_id")
+                        )
+                    except (TypeError, ValueError):
+                        continue
+
+                    if verification_id != int(claim_id):
+                        continue
+
+                    evidence_item = evidence_map.get(
+                        verification_id,
+                        {}
+                    )
+
+                    lines.append(
+                        f"### Claim {verification_id}"
+                    )
+                    lines.append("")
+
+                    lines.append(
+                        f"**Claim:** "
+                        f"{evidence_item.get('claim', '')}"
+                    )
+                    lines.append("")
+
+                    lines.append(
+                        f"**Priority:** "
+                        f"{evidence_item.get('priority', 'MEDIUM')}"
+                    )
+                    lines.append("")
+
+                    lines.append(
+                        f"**Status:** "
+                        f"{verification.get('status', '')}"
+                    )
+                    lines.append("")
+
+                    lines.append(
+                        f"**Confidence:** "
+                        f"{verification.get('confidence', '')}"
+                    )
+                    lines.append("")
+
+                    source_ids = verification.get(
+                        "source_ids",
+                        []
+                    )
+
+                    if source_ids:
+                        lines.append(
+                            f"**Source IDs:** "
+                            f"{source_ids}"
+                        )
+                        lines.append("")
+
+                    break
+
+            lines.append("---")
+            lines.append("")
+
     for verification in verifications:
 
         claim_id = verification.get(
