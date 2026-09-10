@@ -308,6 +308,97 @@ def display_script_ready_claims(claims):
             f"Source IDs: {item['source_ids']}"
         )
 
+
+# ============================================================
+# Block 3A — Claim Priority Engine
+# ============================================================
+
+PRIORITY_SCORES = {
+    "HIGH": 100,
+    "MEDIUM": 70,
+    "LOW": 40,
+    "UNKNOWN": 10
+}
+
+
+def build_claim_priority(script_ready_claims):
+    """
+    Add priority scores and sort claims.
+    """
+
+    prioritized = []
+
+    for item in script_ready_claims:
+
+        claim = dict(item)
+
+        priority = str(
+            claim.get(
+                "priority",
+                "UNKNOWN"
+            )
+        ).strip().upper()
+
+        score = PRIORITY_SCORES.get(
+            priority,
+            PRIORITY_SCORES["UNKNOWN"]
+        )
+
+        claim["priority"] = priority
+        claim["priority_score"] = score
+
+        prioritized.append(claim)
+
+    prioritized.sort(
+        key=lambda x: (
+            x.get("priority_score", 0),
+            -x.get("claim_id", 0)
+        ),
+        reverse=True
+    )
+
+    log(
+        f"Prioritized claims: "
+        f"{len(prioritized)}"
+    )
+
+    return prioritized
+
+
+def display_claim_priority(prioritized_claims):
+    """
+    Display claim priority table.
+    """
+
+    print()
+    print("=" * 60)
+    print("CLAIM PRIORITY")
+    print("=" * 60)
+
+    if not prioritized_claims:
+        print("No prioritized claims.")
+        return
+
+    for item in prioritized_claims:
+
+        print()
+
+        print(
+            f"Claim {item['claim_id']}"
+        )
+
+        print(
+            f"Priority : "
+            f"{item['priority']}"
+        )
+
+        print(
+            f"Score    : "
+            f"{item['priority_score']}"
+        )
+
+    print()
+
 def main():
     banner()
 
@@ -371,6 +462,18 @@ def main():
 
     display_script_ready_claims(
         script_ready_claims
+    )
+
+    # --------------------------------------------------------
+    # Block 3A — Claim Priority Engine
+    # --------------------------------------------------------
+
+    prioritized_claims = build_claim_priority(
+        script_ready_claims
+    )
+
+    display_claim_priority(
+        prioritized_claims
     )
 
 
