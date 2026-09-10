@@ -706,6 +706,288 @@ def main():
             "ERROR"
         )
 
+    # --------------------------------------------------------
+    # Block 3C — Story Plan Builder
+    # --------------------------------------------------------
+
+    story_plan = build_story_plan(
+        narrative_plan
+    )
+
+    display_story_plan(
+        story_plan
+    )
+
+    if validate_story_plan(
+        story_plan
+    ):
+        log(
+            "✅ Story plan validation passed"
+        )
+    else:
+        log(
+            "❌ Story plan validation failed",
+            "ERROR"
+        )
+
+
+
+
+# ============================================================
+# Block 3C — Story Plan Builder
+# ============================================================
+
+STORY_SECTION_ORDER = {
+    "HOOK": 1,
+    "BACKGROUND": 2,
+    "EVIDENCE": 3,
+    "CONCLUSION": 4
+}
+
+
+def build_story_plan(narrative_plan):
+    """
+    Convert the narrative plan into a structured story blueprint.
+
+    No Gemini/API call is used.
+
+    Each story section keeps:
+    - claim_id
+    - claim
+    - narrative role
+    - priority
+    - source IDs
+    - estimated narration time
+    - traceability information
+    """
+
+    if not narrative_plan:
+        log(
+            "No narrative plan available "
+            "for story plan building.",
+            "ERROR"
+        )
+        return []
+
+    story_plan = []
+
+    for item in narrative_plan:
+
+        role = item.get(
+            "role",
+            "UNKNOWN"
+        )
+
+        if role not in STORY_SECTION_ORDER:
+            log(
+                f"Invalid narrative role: {role}",
+                "ERROR"
+            )
+            return []
+
+        story_item = {
+            "section_number": len(
+                story_plan
+            ) + 1,
+
+            "heading": role.title(),
+
+            "role": role,
+
+            "claim_id": item.get(
+                "claim_id"
+            ),
+
+            "claim": item.get(
+                "claim"
+            ),
+
+            "priority": item.get(
+                "priority",
+                "UNKNOWN"
+            ),
+
+            "priority_score": item.get(
+                "priority_score",
+                0
+            ),
+
+            "estimated_seconds": item.get(
+                "estimated_seconds",
+                0
+            ),
+
+            "source_ids": item.get(
+                "source_ids",
+                []
+            ),
+
+            # Internal traceability
+            "claim_ids": [
+                item.get("claim_id")
+            ]
+        }
+
+        story_plan.append(
+            story_item
+        )
+
+    log(
+        f"Story plan created: "
+        f"{len(story_plan)} sections"
+    )
+
+    return story_plan
+
+
+def validate_story_plan(story_plan):
+    """
+    Validate the generated story blueprint.
+    """
+
+    if not isinstance(
+        story_plan,
+        list
+    ):
+        return False
+
+    if not story_plan:
+        return False
+
+    required_roles = {
+        "HOOK",
+        "BACKGROUND",
+        "EVIDENCE",
+        "CONCLUSION"
+    }
+
+    previous_section_number = 0
+
+    for item in story_plan:
+
+        if not isinstance(
+            item,
+            dict
+        ):
+            return False
+
+        if item.get(
+            "section_number"
+        ) != previous_section_number + 1:
+            return False
+
+        if item.get(
+            "role"
+        ) not in required_roles:
+            return False
+
+        if item.get(
+            "claim_id"
+        ) is None:
+            return False
+
+        if not item.get(
+            "claim"
+        ):
+            return False
+
+        if not isinstance(
+            item.get(
+                "estimated_seconds"
+            ),
+            int
+        ):
+            return False
+
+        if item.get(
+            "estimated_seconds"
+        ) <= 0:
+            return False
+
+        if not isinstance(
+            item.get(
+                "claim_ids"
+            ),
+            list
+        ):
+            return False
+
+        if item.get(
+            "claim_id"
+        ) not in item.get(
+            "claim_ids"
+        ):
+            return False
+
+        previous_section_number = item[
+            "section_number"
+        ]
+
+    return True
+
+
+def display_story_plan(story_plan):
+    """
+    Display the structured story blueprint.
+    """
+
+    print()
+    print("=" * 60)
+    print("STORY PLAN")
+    print("=" * 60)
+
+    if not story_plan:
+        print("No story plan available.")
+        return
+
+    for item in story_plan:
+
+        print()
+
+        print(
+            f"Section  : "
+            f"{item['section_number']}"
+        )
+
+        print(
+            f"Heading  : "
+            f"{item['heading']}"
+        )
+
+        print(
+            f"Role     : "
+            f"{item['role']}"
+        )
+
+        print(
+            f"Claim ID : "
+            f"{item['claim_id']}"
+        )
+
+        print(
+            f"Priority : "
+            f"{item['priority']}"
+        )
+
+        print(
+            f"Duration : "
+            f"{item['estimated_seconds']} sec"
+        )
+
+        print(
+            f"Sources  : "
+            f"{item['source_ids']}"
+        )
+
+        print(
+            f"Trace    : "
+            f"{item['claim_ids']}"
+        )
+
+        print(
+            f"Claim    : "
+            f"{item['claim']}"
+        )
 
 if __name__ == "__main__":
     main()
