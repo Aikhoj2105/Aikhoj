@@ -399,6 +399,212 @@ def display_claim_priority(prioritized_claims):
 
     print()
 
+
+# ============================================================
+# Block 3B — Narrative Planner
+# ============================================================
+
+NARRATIVE_ROLES = {
+    "HOOK": 20,
+    "BACKGROUND": 30,
+    "EVIDENCE": 45,
+    "CONCLUSION": 20
+}
+
+
+def build_narrative_plan(prioritized_claims):
+    """
+    Convert prioritized claims into a deterministic
+    narrative structure.
+
+    No Gemini/API call is used.
+
+    Rules:
+    - Highest-priority claim becomes the HOOK.
+    - The next suitable claim becomes BACKGROUND.
+    - Middle claims become EVIDENCE.
+    - The final suitable claim becomes CONCLUSION.
+    """
+
+    if not prioritized_claims:
+        log(
+            "No prioritized claims available "
+            "for narrative planning.",
+            "ERROR"
+        )
+        return []
+
+    claims = [
+        dict(item)
+        for item in prioritized_claims
+        if item.get("claim_id") is not None
+        and item.get("claim")
+    ]
+
+    if not claims:
+        log(
+            "No valid claims available "
+            "for narrative planning.",
+            "ERROR"
+        )
+        return []
+
+    plan = []
+
+    total = len(claims)
+
+    for index, claim in enumerate(claims):
+
+        if index == 0:
+            role = "HOOK"
+
+        elif total == 2 and index == 1:
+            role = "CONCLUSION"
+
+        elif index == 1:
+            role = "BACKGROUND"
+
+        elif index == total - 1:
+            role = "CONCLUSION"
+
+        else:
+            role = "EVIDENCE"
+
+        estimated_seconds = NARRATIVE_ROLES[
+            role
+        ]
+
+        plan_item = {
+            "claim_id": claim["claim_id"],
+            "claim": claim["claim"],
+            "priority": claim.get(
+                "priority",
+                "UNKNOWN"
+            ),
+            "priority_score": claim.get(
+                "priority_score",
+                0
+            ),
+            "role": role,
+            "estimated_seconds": estimated_seconds,
+            "source_ids": claim.get(
+                "source_ids",
+                []
+            )
+        }
+
+        plan.append(plan_item)
+
+    log(
+        f"Narrative plan created: "
+        f"{len(plan)} sections"
+    )
+
+    return plan
+
+
+def validate_narrative_plan(narrative_plan):
+    """
+    Validate the structure of the narrative plan.
+    """
+
+    if not isinstance(
+        narrative_plan,
+        list
+    ):
+        return False
+
+    if not narrative_plan:
+        return False
+
+    valid_roles = {
+        "HOOK",
+        "BACKGROUND",
+        "EVIDENCE",
+        "CONCLUSION"
+    }
+
+    for item in narrative_plan:
+
+        if not isinstance(
+            item,
+            dict
+        ):
+            return False
+
+        if item.get("claim_id") is None:
+            return False
+
+        if not item.get("claim"):
+            return False
+
+        if item.get("role") not in valid_roles:
+            return False
+
+        if not isinstance(
+            item.get("estimated_seconds"),
+            int
+        ):
+            return False
+
+        if item.get("estimated_seconds") <= 0:
+            return False
+
+    return True
+
+
+def display_narrative_plan(narrative_plan):
+    """
+    Display the narrative plan in a compact format.
+    """
+
+    print()
+    print("=" * 60)
+    print("NARRATIVE PLAN")
+    print("=" * 60)
+
+    if not narrative_plan:
+        print("No narrative plan available.")
+        return
+
+    for item in narrative_plan:
+
+        print()
+
+        print(
+            f"Claim {item['claim_id']}"
+        )
+
+        print(
+            f"Role     : "
+            f"{item['role']}"
+        )
+
+        print(
+            f"Priority : "
+            f"{item['priority']}"
+        )
+
+        print(
+            f"Score    : "
+            f"{item['priority_score']}"
+        )
+
+        print(
+            f"Duration : "
+            f"{item['estimated_seconds']} sec"
+        )
+
+        print(
+            f"Sources  : "
+            f"{item['source_ids']}"
+        )
+
+        print(
+            f"Claim    : "
+            f"{item['claim']}"
+        )
+
 def main():
     banner()
 
@@ -475,6 +681,30 @@ def main():
     display_claim_priority(
         prioritized_claims
     )
+
+    # --------------------------------------------------------
+    # Block 3B — Narrative Planner
+    # --------------------------------------------------------
+
+    narrative_plan = build_narrative_plan(
+        prioritized_claims
+    )
+
+    display_narrative_plan(
+        narrative_plan
+    )
+
+    if validate_narrative_plan(
+        narrative_plan
+    ):
+        log(
+            "✅ Narrative plan validation passed"
+        )
+    else:
+        log(
+            "❌ Narrative plan validation failed",
+            "ERROR"
+        )
 
 
 if __name__ == "__main__":
