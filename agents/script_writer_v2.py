@@ -730,6 +730,86 @@ def main():
             "ERROR"
         )
 
+    # --------------------------------------------------------
+    # Block 4A — Outline Generator Foundation
+    # --------------------------------------------------------
+
+    outline = build_outline_foundation(
+        story_plan
+    )
+
+    display_outline_foundation(
+        outline
+    )
+
+    if validate_outline_foundation(
+        outline
+    ):
+        log(
+            "✅ Outline foundation validation passed"
+        )
+    else:
+        log(
+            "❌ Outline foundation validation failed",
+            "ERROR"
+        )
+
+    # --------------------------------------------------------
+    # Block 4B — AI Outline Generator
+    # --------------------------------------------------------
+
+    outline_prompt = build_outline_prompt(
+        story_plan
+    )
+
+    raw_ai_outline = call_gemini_outline(
+        outline_prompt
+    )
+
+    ai_outline = parse_ai_outline(
+        raw_ai_outline
+    )
+
+    display_ai_outline(
+        ai_outline
+    )
+
+    if validate_ai_outline(
+        ai_outline,
+        story_plan
+    ):
+        log(
+            "✅ Block 4B AI outline validation passed"
+        )
+
+    # --------------------------------------------------------
+    # Block 4C — Outline Saver
+    # --------------------------------------------------------
+
+    if validate_ai_outline(
+        ai_outline,
+        story_plan
+    ):
+        saved_outline_path = save_ai_outline(
+            ai_outline
+        )
+
+        if saved_outline_path:
+            log(
+                f"✅ Block 4C outline save passed: "
+                f"{saved_outline_path}"
+            )
+        else:
+            log(
+                "❌ Block 4C outline save failed",
+                "ERROR"
+            )
+    else:
+        log(
+            "❌ Block 4B AI outline validation failed",
+            "ERROR"
+        )
+
 
 
 
@@ -988,6 +1068,785 @@ def display_story_plan(story_plan):
             f"Claim    : "
             f"{item['claim']}"
         )
+
+
+# ============================================================
+# Block 4A — Outline Generator Foundation
+# ============================================================
+
+OUTLINE_SECTION_TYPES = {
+    "HOOK",
+    "BACKGROUND",
+    "EVIDENCE",
+    "CONCLUSION"
+}
+
+
+def build_outline_foundation(story_plan):
+    """
+    Convert the story plan into a clean outline structure.
+
+    No Gemini/API call is used.
+
+    Every outline section preserves:
+    - section number
+    - heading
+    - role
+    - claim IDs
+    - source IDs
+    - estimated narration time
+    """
+
+    if not story_plan:
+        log(
+            "No story plan available "
+            "for outline generation.",
+            "ERROR"
+        )
+        return []
+
+    outline = []
+
+    for item in story_plan:
+
+        role = item.get("role")
+
+        if role not in OUTLINE_SECTION_TYPES:
+            log(
+                f"Invalid outline section role: {role}",
+                "ERROR"
+            )
+            return []
+
+        outline_item = {
+            "section_number": item.get(
+                "section_number"
+            ),
+
+            "heading": item.get(
+                "heading"
+            ),
+
+            "role": role,
+
+            "claim_ids": list(
+                item.get(
+                    "claim_ids",
+                    []
+                )
+            ),
+
+            "source_ids": list(
+                item.get(
+                    "source_ids",
+                    []
+                )
+            ),
+
+            "estimated_seconds": item.get(
+                "estimated_seconds",
+                0
+            ),
+
+            "claim": item.get(
+                "claim"
+            )
+        }
+
+        outline.append(
+            outline_item
+        )
+
+    log(
+        f"Outline foundation created: "
+        f"{len(outline)} sections"
+    )
+
+    return outline
+
+
+def validate_outline_foundation(outline):
+    """
+    Validate the outline foundation structure.
+    """
+
+    if not isinstance(
+        outline,
+        list
+    ):
+        return False
+
+    if not outline:
+        return False
+
+    previous_section = 0
+
+    for item in outline:
+
+        if not isinstance(
+            item,
+            dict
+        ):
+            return False
+
+        section_number = item.get(
+            "section_number"
+        )
+
+        if section_number != previous_section + 1:
+            return False
+
+        if item.get(
+            "role"
+        ) not in OUTLINE_SECTION_TYPES:
+            return False
+
+        if not item.get(
+            "heading"
+        ):
+            return False
+
+        if not isinstance(
+            item.get("claim_ids"),
+            list
+        ):
+            return False
+
+        if not item.get(
+            "claim_ids"
+        ):
+            return False
+
+        if not isinstance(
+            item.get("source_ids"),
+            list
+        ):
+            return False
+
+        if not isinstance(
+            item.get("estimated_seconds"),
+            int
+        ):
+            return False
+
+        if item.get(
+            "estimated_seconds"
+        ) <= 0:
+            return False
+
+        if not item.get(
+            "claim"
+        ):
+            return False
+
+        previous_section = section_number
+
+    return True
+
+
+def display_outline_foundation(outline):
+    """
+    Display the generated outline foundation.
+    """
+
+    print()
+    print("=" * 60)
+    print("OUTLINE FOUNDATION")
+    print("=" * 60)
+
+    if not outline:
+        print("No outline available.")
+        return
+
+    for item in outline:
+
+        print()
+
+        print(
+            f"Section  : "
+            f"{item['section_number']}"
+        )
+
+        print(
+            f"Heading  : "
+            f"{item['heading']}"
+        )
+
+        print(
+            f"Role     : "
+            f"{item['role']}"
+        )
+
+        print(
+            f"Claims   : "
+            f"{item['claim_ids']}"
+        )
+
+        print(
+            f"Sources  : "
+            f"{item['source_ids']}"
+        )
+
+        print(
+            f"Duration : "
+            f"{item['estimated_seconds']} sec"
+        )
+
+        print(
+            f"Claim    : "
+            f"{item['claim']}"
+        )
+
+
+
+# ============================================================
+# Block 4B — AI Outline Generator
+# ============================================================
+
+import json
+import os
+import urllib.request
+import urllib.error
+
+
+GEMINI_MODEL = "gemini-3.5-flash"
+
+
+def build_outline_prompt(story_plan):
+    """
+    Build a strict Gemini prompt for outline generation.
+
+    Gemini must:
+    - Use only approved claims.
+    - Not introduce new factual claims.
+    - Preserve claim IDs.
+    - Return valid JSON only.
+    """
+
+    claims_payload = []
+
+    for item in story_plan:
+        claims_payload.append({
+            "section_number": item.get(
+                "section_number"
+            ),
+            "role": item.get(
+                "role"
+            ),
+            "heading": item.get(
+                "heading"
+            ),
+            "claim_id": item.get(
+                "claim_id"
+            ),
+            "claim": item.get(
+                "claim"
+            ),
+            "source_ids": item.get(
+                "source_ids",
+                []
+            ),
+            "estimated_seconds": item.get(
+                "estimated_seconds",
+                0
+            )
+        })
+
+    claims_json = json.dumps(
+        claims_payload,
+        ensure_ascii=False,
+        indent=2
+    )
+
+    prompt = f"""
+You are the outline planning engine for a Hindi/Hinglish
+faceless YouTube channel called AI Khoj.
+
+Create a detailed YouTube video outline using ONLY the
+approved claims provided below.
+
+STRICT RULES:
+
+1. Do NOT create new factual claims.
+2. Do NOT add statistics, dates, names, examples, or facts
+   that are not present in the approved claims.
+3. Preserve every claim_id exactly.
+4. Every outline section must reference one or more
+   approved claim IDs.
+5. Keep the narrative logical and engaging.
+6. The outline is for a documentary/educational YouTube
+   video.
+7. Return ONLY valid JSON.
+8. Do not use Markdown.
+9. Do not add commentary outside JSON.
+
+APPROVED STORY PLAN:
+
+{claims_json}
+
+Return JSON using exactly this structure:
+
+{{
+  "title_direction": "string",
+  "sections": [
+    {{
+      "section_number": 1,
+      "heading": "string",
+      "role": "HOOK",
+      "claim_ids": [1],
+      "purpose": "string",
+      "key_points": [
+        "string"
+      ],
+      "estimated_seconds": 20
+    }}
+  ]
+}}
+"""
+
+    return prompt
+
+
+def call_gemini_outline(prompt):
+    """
+    Send the outline-generation prompt to Gemini.
+    """
+
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
+
+    if not api_key:
+        log(
+            "GEMINI_API_KEY not found.",
+            "ERROR"
+        )
+        return None
+
+    url = (
+        "https://generativelanguage.googleapis.com/"
+        "v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent"
+        f"?key={api_key}"
+    )
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.3,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    data = json.dumps(
+        payload
+    ).encode(
+        "utf-8"
+    )
+
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+
+    try:
+
+        with urllib.request.urlopen(
+            request,
+            timeout=60
+        ) as response:
+
+            response_data = json.loads(
+                response.read().decode(
+                    "utf-8"
+                )
+            )
+
+        text = (
+            response_data
+            ["candidates"][0]
+            ["content"]["parts"][0]
+            ["text"]
+        )
+
+        return text
+
+    except urllib.error.HTTPError as error:
+
+        log(
+            f"Gemini HTTP error: "
+            f"{error.code}",
+            "ERROR"
+        )
+
+        try:
+            error_body = (
+                error.read()
+                .decode("utf-8")
+            )
+
+            print(error_body)
+
+        except Exception:
+            pass
+
+        return None
+
+    except Exception as error:
+
+        log(
+            f"Gemini request failed: "
+            f"{error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def parse_ai_outline(raw_text):
+    """
+    Parse Gemini's JSON outline.
+    """
+
+    if not raw_text:
+        return None
+
+    try:
+
+        outline = json.loads(
+            raw_text
+        )
+
+        if not isinstance(
+            outline,
+            dict
+        ):
+            return None
+
+        if not isinstance(
+            outline.get("sections"),
+            list
+        ):
+            return None
+
+        return outline
+
+    except json.JSONDecodeError as error:
+
+        log(
+            f"Invalid Gemini JSON: "
+            f"{error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def validate_ai_outline(
+    outline,
+    story_plan
+):
+    """
+    Safety validation for the AI-generated outline.
+
+    The outline may reorganize wording, but it cannot
+    reference claim IDs that were not approved.
+    """
+
+    if not isinstance(
+        outline,
+        dict
+    ):
+        return False
+
+    sections = outline.get(
+        "sections"
+    )
+
+    if not isinstance(
+        sections,
+        list
+    ):
+        return False
+
+    if not sections:
+        return False
+
+    approved_claim_ids = {
+        item.get("claim_id")
+        for item in story_plan
+        if item.get("claim_id") is not None
+    }
+
+    valid_roles = {
+        "HOOK",
+        "BACKGROUND",
+        "EVIDENCE",
+        "CONCLUSION"
+    }
+
+    previous_section = 0
+
+    for section in sections:
+
+        if not isinstance(
+            section,
+            dict
+        ):
+            return False
+
+        section_number = section.get(
+            "section_number"
+        )
+
+        if section_number != (
+            previous_section + 1
+        ):
+            return False
+
+        if section.get(
+            "role"
+        ) not in valid_roles:
+            return False
+
+        claim_ids = section.get(
+            "claim_ids"
+        )
+
+        if not isinstance(
+            claim_ids,
+            list
+        ):
+            return False
+
+        if not claim_ids:
+            return False
+
+        for claim_id in claim_ids:
+
+            if claim_id not in (
+                approved_claim_ids
+            ):
+                return False
+
+        if not section.get(
+            "heading"
+        ):
+            return False
+
+        if not section.get(
+            "purpose"
+        ):
+            return False
+
+        if not isinstance(
+            section.get("key_points"),
+            list
+        ):
+            return False
+
+        if not isinstance(
+            section.get(
+                "estimated_seconds"
+            ),
+            int
+        ):
+            return False
+
+        if section.get(
+            "estimated_seconds"
+        ) <= 0:
+            return False
+
+        previous_section = (
+            section_number
+        )
+
+    return True
+
+
+def display_ai_outline(outline):
+    """
+    Display the AI-generated outline.
+    """
+
+    print()
+    print("=" * 60)
+    print("AI-GENERATED OUTLINE")
+    print("=" * 60)
+
+    if not outline:
+        print("No AI outline available.")
+        return
+
+    print()
+    print(
+        f"Title Direction: "
+        f"{outline.get('title_direction', '')}"
+    )
+
+    for section in outline.get(
+        "sections",
+        []
+    ):
+
+        print()
+        print(
+            f"Section : "
+            f"{section['section_number']}"
+        )
+
+        print(
+            f"Heading : "
+            f"{section['heading']}"
+        )
+
+        print(
+            f"Role    : "
+            f"{section['role']}"
+        )
+
+        print(
+            f"Claims  : "
+            f"{section['claim_ids']}"
+        )
+
+        print(
+            f"Purpose : "
+            f"{section['purpose']}"
+        )
+
+        print(
+            f"Duration: "
+            f"{section['estimated_seconds']} sec"
+        )
+
+        print("Key Points:")
+
+        for point in section.get(
+            "key_points",
+            []
+        ):
+
+            print(
+                f"  - {point}"
+            )
+
+
+# ============================================================
+# End of Block 4B
+# ============================================================
+
+
+# ============================================================
+# Block 4C — Outline Saver
+# ============================================================
+
+def save_ai_outline(outline):
+    """
+    Save the validated AI-generated outline as JSON.
+
+    Returns:
+        Path of the saved file, or None on failure.
+    """
+
+    if not isinstance(outline, dict):
+        log(
+            "Cannot save invalid AI outline.",
+            "ERROR"
+        )
+        return None
+
+    sections = outline.get("sections")
+
+    if not isinstance(sections, list):
+        log(
+            "Cannot save outline without sections.",
+            "ERROR"
+        )
+        return None
+
+    SCRIPT_OUTPUT_DIR.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    timestamp = current_timestamp()
+
+    output_path = (
+        SCRIPT_OUTPUT_DIR
+        / f"outline_{timestamp.replace('-', '').replace(' ', '_').replace(':', '')}.json"
+    )
+
+    try:
+        output_path.write_text(
+            json.dumps(
+                outline,
+                ensure_ascii=False,
+                indent=2
+            ),
+            encoding="utf-8"
+        )
+
+        log(
+            f"AI outline saved: {output_path}"
+        )
+
+        return output_path
+
+    except Exception as error:
+
+        log(
+            f"Failed to save AI outline: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def load_ai_outline(path):
+    """
+    Load a previously saved AI outline.
+    """
+
+    if not path:
+        return None
+
+    try:
+
+        outline = json.loads(
+            Path(path).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        return outline
+
+    except Exception as error:
+
+        log(
+            f"Failed to load AI outline: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+# ============================================================
+# End of Block 4C
+# ============================================================
 
 if __name__ == "__main__":
     main()
