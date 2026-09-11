@@ -1029,6 +1029,72 @@ def main():
             "ERROR"
         )
 
+    # ========================================================
+    # Block 7A — Final Assembly
+    # ========================================================
+
+    approved_sections = prepare_final_assembly_sections(
+        final_quality_sections
+    )
+
+    display_final_assembly_sections(
+        approved_sections
+    )
+
+    if not approved_sections:
+        log(
+            "❌ Block 7A Final Assembly failed: "
+            "no FINAL_APPROVED sections available.",
+            "ERROR"
+        )
+        return
+
+    # ========================================================
+    # Block 7B — Final Script Builder
+    # ========================================================
+
+    final_script = build_final_script(
+        approved_sections
+    )
+
+    final_script_metadata = build_final_script_metadata(
+        approved_sections
+    )
+
+    display_final_script(
+        final_script,
+        final_script_metadata
+    )
+
+    # ========================================================
+    # Block 7C — Final Script Export + Validation
+    # ========================================================
+
+    title_direction = ai_outline.get(
+        "title_direction"
+    )
+
+    export_result = export_final_script(
+        final_script,
+        final_script_metadata,
+        title_direction=title_direction
+    )
+
+    display_final_script_export(
+        export_result
+    )
+
+    if not export_result:
+        log(
+            "❌ Block 7C Final Script Export failed.",
+            "ERROR"
+        )
+        return
+
+    log(
+        "✅ Block 7 — Final Script Assembly pipeline passed"
+    )
+
 
 # ============================================================
 # Block 6A — Quality Gate Foundation
@@ -2394,7 +2460,16 @@ def save_ai_outline(outline):
         exist_ok=True
     )
 
-    timestamp = current_timestamp()
+    timestamp = current_timestamp().replace(
+        "-",
+        ""
+    ).replace(
+        ":",
+        ""
+    ).replace(
+        " ",
+        "_"
+    )
 
     output_path = (
         SCRIPT_OUTPUT_DIR
@@ -3601,6 +3676,422 @@ def display_section_safety_reviews(
 # ============================================================
 # End of Block 5C
 # ============================================================
+
+
+# --------------------------------------------------------
+# Block 7A — Final Script Assembly Foundation
+# --------------------------------------------------------
+
+FINAL_SCRIPT_DIR = Path("outputs/scripts")
+
+
+def validate_final_assembly_input(final_quality_sections):
+    """
+    Validate sections before final script assembly.
+
+    Only FINAL_APPROVED sections are eligible for final assembly.
+    This block does not call Gemini.
+    """
+
+    if not isinstance(final_quality_sections, list):
+        raise ValueError(
+            "Final assembly input must be a list"
+        )
+
+    required_fields = [
+        "section_number",
+        "heading",
+        "claim_ids",
+        "narration",
+        "final_quality_status",
+    ]
+
+    for section in final_quality_sections:
+
+        if not isinstance(section, dict):
+            raise ValueError(
+                "Each final section must be a dictionary"
+            )
+
+        for field in required_fields:
+            if field not in section:
+                raise ValueError(
+                    f"Missing required field: {field}"
+                )
+
+        if not isinstance(
+            section["section_number"],
+            int
+        ):
+            raise ValueError(
+                "section_number must be an integer"
+            )
+
+        if not isinstance(
+            section["claim_ids"],
+            list
+        ):
+            raise ValueError(
+                "claim_ids must be a list"
+            )
+
+        if not isinstance(
+            section["narration"],
+            str
+        ) or not section["narration"].strip():
+
+            raise ValueError(
+                "narration must be a non-empty string"
+            )
+
+        if section["final_quality_status"] not in {
+            FINAL_APPROVED,
+            FINAL_HOLD,
+        }:
+            raise ValueError(
+                "Invalid final quality status"
+            )
+
+    return True
+
+
+def prepare_final_assembly_sections(final_quality_sections):
+    """
+    Select and order only FINAL_APPROVED sections.
+    """
+
+    validate_final_assembly_input(
+        final_quality_sections
+    )
+
+    approved_sections = [
+        section
+        for section in final_quality_sections
+        if section.get("final_quality_status")
+        == FINAL_APPROVED
+    ]
+
+    approved_sections.sort(
+        key=lambda section:
+        section["section_number"]
+    )
+
+    return approved_sections
+
+
+def display_final_assembly_sections(
+    approved_sections
+):
+    """
+    Display sections selected for final assembly.
+    """
+
+    log(
+        f"Final Assembly sections selected: "
+        f"{len(approved_sections)}"
+    )
+
+    for section in approved_sections:
+
+        log(
+            f"Section {section['section_number']} "
+            f"| {section['heading']} "
+            f"| Claims: {section['claim_ids']}"
+        )
+
+    if approved_sections:
+        log(
+            "✅ Block 7A Final Assembly Foundation passed"
+        )
+    else:
+        log(
+            "❌ Block 7A found no FINAL_APPROVED sections",
+            "ERROR"
+        )
+
+
+
+# --------------------------------------------------------
+# Block 7B — Final Script Builder
+# --------------------------------------------------------
+
+
+def build_final_script(approved_sections):
+    """
+    Build the final narration script from approved sections.
+
+    Sections must already be validated and ordered by Block 7A.
+    No new factual content is generated here.
+    """
+
+    if not isinstance(approved_sections, list):
+        raise ValueError(
+            "Approved sections must be a list"
+        )
+
+    if not approved_sections:
+        raise ValueError(
+            "No approved sections available"
+        )
+
+    script_parts = []
+
+    for section in approved_sections:
+
+        narration = section.get("narration", "").strip()
+
+        if not narration:
+            raise ValueError(
+                f"Section {section.get('section_number')} "
+                "has empty narration"
+            )
+
+        script_parts.append(narration)
+
+    final_script = "\n\n".join(script_parts)
+
+    if not final_script.strip():
+        raise ValueError(
+            "Final script is empty"
+        )
+
+    return final_script
+
+
+def build_final_script_metadata(approved_sections):
+    """
+    Preserve section and claim traceability for the final script.
+    """
+
+    metadata = []
+
+    for section in approved_sections:
+
+        metadata.append({
+            "section_number": section["section_number"],
+            "heading": section["heading"],
+            "role": section.get("role"),
+            "claim_ids": section["claim_ids"],
+            "estimated_seconds": section.get(
+                "estimated_seconds"
+            ),
+        })
+
+    return metadata
+
+
+def display_final_script(
+    final_script,
+    final_script_metadata
+):
+    """
+    Display the assembled final script and traceability.
+    """
+
+    print("\n" + "=" * 60)
+    print("AI KHOJ — FINAL SCRIPT")
+    print("=" * 60)
+
+    print(final_script)
+
+    print("\n" + "-" * 60)
+    print("FINAL SCRIPT TRACEABILITY")
+    print("-" * 60)
+
+    for item in final_script_metadata:
+
+        print(
+            f"Section {item['section_number']} "
+            f"| {item['heading']} "
+            f"| Claims: {item['claim_ids']}"
+        )
+
+    print("\n✅ Block 7B Final Script Builder passed")
+
+
+
+# --------------------------------------------------------
+# Block 7C — Final Script Export + Validation
+# --------------------------------------------------------
+
+
+def validate_final_script_export(
+    final_script,
+    final_script_metadata
+):
+    """
+    Final validation before exporting the assembled script.
+    """
+
+    if not isinstance(final_script, str):
+        raise ValueError(
+            "Final script must be a string"
+        )
+
+    if not final_script.strip():
+        raise ValueError(
+            "Final script cannot be empty"
+        )
+
+    if not isinstance(final_script_metadata, list):
+        raise ValueError(
+            "Final script metadata must be a list"
+        )
+
+    for item in final_script_metadata:
+
+        required_fields = [
+            "section_number",
+            "heading",
+            "claim_ids",
+        ]
+
+        for field in required_fields:
+            if field not in item:
+                raise ValueError(
+                    f"Missing metadata field: {field}"
+                )
+
+        if not isinstance(
+            item["section_number"],
+            int
+        ):
+            raise ValueError(
+                "Metadata section_number must be an integer"
+            )
+
+        if not isinstance(
+            item["claim_ids"],
+            list
+        ):
+            raise ValueError(
+                "Metadata claim_ids must be a list"
+            )
+
+    return True
+
+
+def export_final_script(
+    final_script,
+    final_script_metadata,
+    title_direction=None
+):
+    """
+    Export the final assembled script and metadata.
+
+    No new content is generated here.
+    """
+
+    validate_final_script_export(
+        final_script,
+        final_script_metadata
+    )
+
+    FINAL_SCRIPT_DIR.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    timestamp = current_timestamp().replace(
+        "-",
+        ""
+    ).replace(
+        ":",
+        ""
+    ).replace(
+        " ",
+        "_"
+    )
+
+    script_path = (
+        FINAL_SCRIPT_DIR
+        / f"final_script_{timestamp}.md"
+    )
+
+    metadata_path = (
+        FINAL_SCRIPT_DIR
+        / f"final_script_{timestamp}.json"
+    )
+
+    markdown_parts = []
+
+    if title_direction:
+        markdown_parts.append(
+            f"# {title_direction}"
+        )
+        markdown_parts.append("")
+
+    markdown_parts.append(
+        "## Final Script"
+    )
+    markdown_parts.append("")
+    markdown_parts.append(
+        final_script.strip()
+    )
+
+    markdown_parts.append("")
+    markdown_parts.append(
+        "## Claim Traceability"
+    )
+    markdown_parts.append("")
+
+    for item in final_script_metadata:
+
+        markdown_parts.append(
+            f"- Section {item['section_number']}: "
+            f"{item['heading']} "
+            f"| Claims: {item['claim_ids']}"
+        )
+
+    script_path.write_text(
+        "\n".join(markdown_parts),
+        encoding="utf-8"
+    )
+
+    metadata_payload = {
+        "title_direction": title_direction,
+        "sections": final_script_metadata,
+        "script_file": str(script_path),
+    }
+
+    import json
+
+    metadata_path.write_text(
+        json.dumps(
+            metadata_payload,
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    return {
+        "script_path": str(script_path),
+        "metadata_path": str(metadata_path),
+    }
+
+
+def display_final_script_export(export_result):
+    """
+    Display final export paths.
+    """
+
+    print("\n" + "-" * 60)
+    print("FINAL SCRIPT EXPORT")
+    print("-" * 60)
+
+    print(
+        f"Script: {export_result['script_path']}"
+    )
+
+    print(
+        f"Metadata: {export_result['metadata_path']}"
+    )
+
+    print(
+        "\n✅ Block 7C Final Script Export + Validation passed"
+    )
+
 
 if __name__ == "__main__":
     main()
