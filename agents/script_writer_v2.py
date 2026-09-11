@@ -781,6 +781,11 @@ def main():
         log(
             "✅ Block 4B AI outline validation passed"
         )
+    else:
+        log(
+            "❌ Block 4B AI outline validation failed",
+            "ERROR"
+        )
 
     # --------------------------------------------------------
     # Block 4C — Outline Saver
@@ -804,13 +809,619 @@ def main():
                 "❌ Block 4C outline save failed",
                 "ERROR"
             )
+
+    # --------------------------------------------------------
+    # Block 5A — Section Writer Foundation
+    # --------------------------------------------------------
+
+    section_writing_tasks = (
+        build_section_writing_tasks(
+            ai_outline
+        )
+    )
+
+    display_section_writing_tasks(
+        section_writing_tasks
+    )
+
+    if validate_section_writing_tasks(
+        section_writing_tasks
+    ):
+        log(
+            "✅ Block 5A section writing task validation passed"
+        )
     else:
         log(
-            "❌ Block 4B AI outline validation failed",
+            "❌ Block 5A section writing task validation failed",
+            "ERROR"
+        )
+
+    # --------------------------------------------------------
+    # Block 5B — AI Section Writer
+    # --------------------------------------------------------
+
+    generated_sections = write_script_sections(
+        section_writing_tasks
+    )
+
+    display_generated_sections(
+        generated_sections
+    )
+
+    if generated_sections:
+        log(
+            "✅ Block 5B AI section writing passed"
+        )
+    else:
+        log(
+            "❌ Block 5B AI section writing failed",
+            "ERROR"
+        )
+
+    # --------------------------------------------------------
+    # Block 5C — Section Fact-Safety Review
+    # --------------------------------------------------------
+
+    reviewed_sections = review_generated_sections(
+        generated_sections,
+        section_writing_tasks
+    )
+
+    display_section_safety_reviews(
+        reviewed_sections
+    )
+
+    if reviewed_sections:
+        log(
+            "✅ Block 5C section fact-safety review passed"
+        )
+    else:
+        log(
+            "❌ Block 5C section fact-safety review failed",
             "ERROR"
         )
 
 
+    # --------------------------------------------------------
+    # Block 6A — Quality Gate
+    # --------------------------------------------------------
+
+    gated_sections = apply_quality_gate(
+        reviewed_sections
+    )
+
+    display_quality_gate_results(
+        gated_sections
+    )
+
+    approved_sections = [
+        section
+        for section in gated_sections
+        if section.get("quality_gate_status")
+        == QUALITY_GATE_APPROVED
+    ]
+
+    held_sections = [
+        section
+        for section in gated_sections
+        if section.get("quality_gate_status")
+        == QUALITY_GATE_HOLD
+    ]
+
+    log(
+        f"Quality Gate approved sections: "
+        f"{len(approved_sections)}"
+    )
+
+    log(
+        f"Quality Gate held sections: "
+        f"{len(held_sections)}"
+    )
+
+    if gated_sections:
+        log(
+            "✅ Block 6A Quality Gate passed"
+        )
+    else:
+        log(
+            "❌ Block 6A Quality Gate failed",
+            "ERROR"
+        )
+
+
+
+
+    # --------------------------------------------------------
+    # Block 6B — Quality Gate Integrity
+    # --------------------------------------------------------
+
+    approved_claim_ids = [
+        claim.get("claim_id")
+        for claim in script_ready_claims
+        if claim.get("claim_id") is not None
+    ]
+
+    checked_sections = apply_quality_gate_integrity(
+        gated_sections,
+        approved_claim_ids
+    )
+
+    display_quality_gate_integrity(
+        checked_sections
+    )
+
+    valid_sections = [
+        section
+        for section in checked_sections
+        if section.get("integrity_status") == "VALID"
+    ]
+
+    invalid_sections = [
+        section
+        for section in checked_sections
+        if section.get("integrity_status") == "INVALID"
+    ]
+
+    log(
+        f"Quality Gate valid sections: "
+        f"{len(valid_sections)}"
+    )
+
+    log(
+        f"Quality Gate invalid sections: "
+        f"{len(invalid_sections)}"
+    )
+
+    if checked_sections:
+        log(
+            "✅ Block 6B Quality Gate integrity passed"
+        )
+    else:
+        log(
+            "❌ Block 6B Quality Gate integrity failed",
+            "ERROR"
+        )
+
+
+    # --------------------------------------------------------
+    # Block 6C — Final Quality Gate Decision
+    # --------------------------------------------------------
+
+    final_quality_sections = apply_final_quality_gate(
+        checked_sections
+    )
+
+    display_final_quality_gate(
+        final_quality_sections
+    )
+
+    final_approved_sections = [
+        section
+        for section in final_quality_sections
+        if section.get("final_quality_status")
+        == FINAL_APPROVED
+    ]
+
+    final_hold_sections = [
+        section
+        for section in final_quality_sections
+        if section.get("final_quality_status")
+        == FINAL_HOLD
+    ]
+
+    log(
+        f"Final Quality Gate approved sections: "
+        f"{len(final_approved_sections)}"
+    )
+
+    log(
+        f"Final Quality Gate held sections: "
+        f"{len(final_hold_sections)}"
+    )
+
+    if final_quality_sections:
+        log(
+            "✅ Block 6C Final Quality Gate passed"
+        )
+    else:
+        log(
+            "❌ Block 6C Final Quality Gate failed",
+            "ERROR"
+        )
+
+
+# ============================================================
+# Block 6A — Quality Gate Foundation
+# ============================================================
+
+QUALITY_GATE_APPROVED = "APPROVED"
+QUALITY_GATE_HOLD = "HOLD"
+
+
+def validate_quality_gate_input(reviewed_sections):
+    """
+    Validate the structure received from Block 5C.
+
+    No Gemini/API call is used.
+    """
+
+    if not isinstance(reviewed_sections, list):
+        log(
+            "Invalid reviewed sections for Quality Gate.",
+            "ERROR"
+        )
+        return False
+
+    if not reviewed_sections:
+        log(
+            "No reviewed sections available for Quality Gate.",
+            "ERROR"
+        )
+        return False
+
+    for section in reviewed_sections:
+
+        if not isinstance(section, dict):
+            log(
+                "Invalid section object in Quality Gate input.",
+                "ERROR"
+            )
+            return False
+
+        required_fields = [
+            "section_number",
+            "claim_ids",
+            "narration",
+            "safety_status"
+        ]
+
+        for field in required_fields:
+            if field not in section:
+                log(
+                    f"Missing Quality Gate field: {field}",
+                    "ERROR"
+                )
+                return False
+
+        if not isinstance(
+            section.get("claim_ids"),
+            list
+        ):
+            log(
+                "Invalid claim_ids in Quality Gate input.",
+                "ERROR"
+            )
+            return False
+
+        if not isinstance(
+            section.get("narration"),
+            str
+        ):
+            log(
+                "Invalid narration in Quality Gate input.",
+                "ERROR"
+            )
+            return False
+
+        if not section.get("narration").strip():
+            log(
+                "Empty narration found in Quality Gate input.",
+                "ERROR"
+            )
+            return False
+
+        if section.get("safety_status") not in [
+            "SAFE",
+            "REVIEW"
+        ]:
+            log(
+                "Invalid safety status in Quality Gate input.",
+                "ERROR"
+            )
+            return False
+
+    return True
+
+
+def apply_quality_gate(reviewed_sections):
+    """
+    Apply deterministic quality rules to safety-reviewed sections.
+
+    SAFE  -> APPROVED
+    REVIEW -> HOLD
+
+    No Gemini/API call is used.
+    """
+
+    if not validate_quality_gate_input(
+        reviewed_sections
+    ):
+        return []
+
+    gated_sections = []
+
+    for section in reviewed_sections:
+
+        gated_item = dict(section)
+
+        safety_status = section.get(
+            "safety_status"
+        )
+
+        if safety_status == "SAFE":
+            gate_status = QUALITY_GATE_APPROVED
+        else:
+            gate_status = QUALITY_GATE_HOLD
+
+        gated_item["quality_gate_status"] = gate_status
+
+        gated_sections.append(
+            gated_item
+        )
+
+    return gated_sections
+
+
+def display_quality_gate_results(
+    gated_sections
+):
+    """
+    Display Quality Gate decisions.
+    """
+
+    print()
+    print("=" * 60)
+    print("QUALITY GATE")
+    print("=" * 60)
+
+    if not gated_sections:
+        print(
+            "No sections available for Quality Gate."
+        )
+        return
+
+    for section in gated_sections:
+
+        print()
+
+        print(
+            f"Section : "
+            f"{section['section_number']}"
+        )
+
+        print(
+            f"Claims  : "
+            f"{section['claim_ids']}"
+        )
+
+        print(
+            f"Safety  : "
+            f"{section['safety_status']}"
+        )
+
+        print(
+            f"Gate    : "
+            f"{section['quality_gate_status']}"
+        )
+
+
+# ============================================================
+# End of Block 6A
+# ============================================================
+
+# ============================================================
+# Block 6B — Quality Gate Integrity Checks
+# ============================================================
+
+def validate_quality_gate_integrity(gated_sections, approved_claim_ids):
+    """
+    Validate that approved sections contain only valid claim IDs
+    and structurally valid section data.
+
+    No Gemini/API call is used.
+    """
+    if not isinstance(gated_sections, list):
+        log("Invalid gated sections for integrity check.", "ERROR")
+        return False
+
+    if not isinstance(approved_claim_ids, list):
+        log("Invalid approved claim IDs for integrity check.", "ERROR")
+        return False
+
+    approved_claim_ids = set(approved_claim_ids)
+
+    for section in gated_sections:
+        if not isinstance(section, dict):
+            log("Invalid section object in integrity check.", "ERROR")
+            return False
+
+        section_number = section.get("section_number")
+        claim_ids = section.get("claim_ids")
+        narration = section.get("narration")
+        gate_status = section.get("quality_gate_status")
+
+        if not isinstance(section_number, int):
+            log("Invalid section number in integrity check.", "ERROR")
+            return False
+
+        if not isinstance(claim_ids, list):
+            log(
+                f"Invalid claim_ids in section {section_number}.",
+                "ERROR"
+            )
+            return False
+
+        if not isinstance(narration, str) or not narration.strip():
+            log(
+                f"Empty or invalid narration in section {section_number}.",
+                "ERROR"
+            )
+            return False
+
+        if gate_status not in [
+            QUALITY_GATE_APPROVED,
+            QUALITY_GATE_HOLD
+        ]:
+            log(
+                f"Invalid quality gate status in section {section_number}.",
+                "ERROR"
+            )
+            return False
+
+        for claim_id in claim_ids:
+            if claim_id not in approved_claim_ids:
+                log(
+                    f"Section {section_number} contains invalid "
+                    f"claim ID: {claim_id}",
+                    "ERROR"
+                )
+                return False
+
+    return True
+
+
+def apply_quality_gate_integrity(gated_sections, approved_claim_ids):
+    """
+    Apply deterministic integrity checks.
+
+    Invalid sections are changed to HOLD.
+    No Gemini/API call is used.
+    """
+    if not isinstance(gated_sections, list):
+        return []
+
+    approved_claim_ids = set(approved_claim_ids)
+
+    checked_sections = []
+
+    for section in gated_sections:
+        checked_item = dict(section)
+
+        claim_ids = section.get("claim_ids", [])
+        narration = section.get("narration", "")
+        section_number = section.get("section_number")
+
+        valid_structure = (
+            isinstance(section_number, int)
+            and isinstance(claim_ids, list)
+            and isinstance(narration, str)
+            and bool(narration.strip())
+        )
+
+        valid_claim_ids = all(
+            claim_id in approved_claim_ids
+            for claim_id in claim_ids
+        )
+
+        if valid_structure and valid_claim_ids:
+            checked_item["integrity_status"] = "VALID"
+        else:
+            checked_item["integrity_status"] = "INVALID"
+            checked_item["quality_gate_status"] = QUALITY_GATE_HOLD
+
+        checked_sections.append(checked_item)
+
+    return checked_sections
+
+
+def display_quality_gate_integrity(checked_sections):
+    """
+    Display Quality Gate integrity results.
+    """
+    print()
+    print("=" * 60)
+    print("QUALITY GATE INTEGRITY")
+    print("=" * 60)
+
+    if not checked_sections:
+        print("No sections available for integrity check.")
+        return
+
+    for section in checked_sections:
+        print()
+        print(f"Section  : {section['section_number']}")
+        print(f"Claims   : {section['claim_ids']}")
+        print(f"Integrity: {section['integrity_status']}")
+        print(f"Gate     : {section['quality_gate_status']}")
+
+# ============================================================
+# End of Block 6B
+# ============================================================
+
+# ============================================================
+# Block 6C — Final Quality Gate Decision
+# ============================================================
+
+FINAL_APPROVED = "FINAL_APPROVED"
+FINAL_HOLD = "FINAL_HOLD"
+
+
+def apply_final_quality_gate(checked_sections):
+    """
+    Make the final deterministic Quality Gate decision.
+
+    APPROVED + VALID -> FINAL_APPROVED
+    Otherwise        -> FINAL_HOLD
+
+    No Gemini/API call is used.
+    """
+    if not isinstance(checked_sections, list):
+        log(
+            "Invalid sections for final Quality Gate.",
+            "ERROR"
+        )
+        return []
+
+    final_sections = []
+
+    for section in checked_sections:
+        final_item = dict(section)
+
+        quality_status = section.get(
+            "quality_gate_status"
+        )
+        integrity_status = section.get(
+            "integrity_status"
+        )
+
+        if (
+            quality_status == QUALITY_GATE_APPROVED
+            and integrity_status == "VALID"
+        ):
+            final_item["final_quality_status"] = FINAL_APPROVED
+        else:
+            final_item["final_quality_status"] = FINAL_HOLD
+
+        final_sections.append(final_item)
+
+    return final_sections
+
+
+def display_final_quality_gate(final_sections):
+    """
+    Display final Quality Gate decisions.
+    """
+    print()
+    print("=" * 60)
+    print("FINAL QUALITY GATE")
+    print("=" * 60)
+
+    if not final_sections:
+        print("No sections available for final Quality Gate.")
+        return
+
+    for section in final_sections:
+        print()
+        print(f"Section   : {section['section_number']}")
+        print(f"Claims    : {section['claim_ids']}")
+        print(f"Safety    : {section['quality_gate_status']}")
+        print(f"Integrity : {section['integrity_status']}")
+        print(f"Final     : {section['final_quality_status']}")
+
+
+# ============================================================
+# End of Block 6C
+# ============================================================
 
 
 # ============================================================
@@ -1846,6 +2457,1149 @@ def load_ai_outline(path):
 
 # ============================================================
 # End of Block 4C
+# ============================================================
+
+
+
+# ============================================================
+# Block 5A — Section Writer Foundation
+# ============================================================
+
+def build_section_writing_tasks(ai_outline):
+    """
+    Convert the validated AI outline into section-writing tasks.
+
+    No Gemini/API call is used.
+
+    Every task preserves:
+    - section number
+    - heading
+    - role
+    - claim IDs
+    - estimated narration time
+    - purpose
+    - key points
+    """
+
+    if not isinstance(
+        ai_outline,
+        dict
+    ):
+        log(
+            "Invalid AI outline for section writing.",
+            "ERROR"
+        )
+        return []
+
+    sections = ai_outline.get(
+        "sections"
+    )
+
+    if not isinstance(
+        sections,
+        list
+    ):
+        log(
+            "AI outline contains no valid sections.",
+            "ERROR"
+        )
+        return []
+
+    writing_tasks = []
+
+    for section in sections:
+
+        if not isinstance(
+            section,
+            dict
+        ):
+            log(
+                "Invalid section found in AI outline.",
+                "ERROR"
+            )
+            return []
+
+        section_number = section.get(
+            "section_number"
+        )
+
+        heading = section.get(
+            "heading"
+        )
+
+        role = section.get(
+            "role"
+        )
+
+        claim_ids = section.get(
+            "claim_ids",
+            []
+        )
+
+        purpose = section.get(
+            "purpose"
+        )
+
+        key_points = section.get(
+            "key_points",
+            []
+        )
+
+        estimated_seconds = section.get(
+            "estimated_seconds",
+            0
+        )
+
+        if section_number is None:
+            return []
+
+        if not heading:
+            return []
+
+        if not role:
+            return []
+
+        if not isinstance(
+            claim_ids,
+            list
+        ) or not claim_ids:
+            return []
+
+        if not purpose:
+            return []
+
+        if not isinstance(
+            key_points,
+            list
+        ):
+            return []
+
+        if not isinstance(
+            estimated_seconds,
+            int
+        ) or estimated_seconds <= 0:
+            return []
+
+        task = {
+            "section_number": section_number,
+            "heading": heading,
+            "role": role,
+            "claim_ids": list(
+                claim_ids
+            ),
+            "purpose": purpose,
+            "key_points": list(
+                key_points
+            ),
+            "estimated_seconds": (
+                estimated_seconds
+            )
+        }
+
+        writing_tasks.append(
+            task
+        )
+
+    log(
+        f"Section writing tasks created: "
+        f"{len(writing_tasks)}"
+    )
+
+    return writing_tasks
+
+
+def validate_section_writing_tasks(
+    writing_tasks
+):
+    """
+    Validate section-writing task structure.
+    """
+
+    if not isinstance(
+        writing_tasks,
+        list
+    ):
+        return False
+
+    if not writing_tasks:
+        return False
+
+    previous_section = 0
+
+    for task in writing_tasks:
+
+        if not isinstance(
+            task,
+            dict
+        ):
+            return False
+
+        section_number = task.get(
+            "section_number"
+        )
+
+        if section_number != (
+            previous_section + 1
+        ):
+            return False
+
+        if not task.get(
+            "heading"
+        ):
+            return False
+
+        if not task.get(
+            "role"
+        ):
+            return False
+
+        claim_ids = task.get(
+            "claim_ids"
+        )
+
+        if not isinstance(
+            claim_ids,
+            list
+        ):
+            return False
+
+        if not claim_ids:
+            return False
+
+        if not task.get(
+            "purpose"
+        ):
+            return False
+
+        if not isinstance(
+            task.get("key_points"),
+            list
+        ):
+            return False
+
+        if not isinstance(
+            task.get(
+                "estimated_seconds"
+            ),
+            int
+        ):
+            return False
+
+        if task.get(
+            "estimated_seconds"
+        ) <= 0:
+            return False
+
+        previous_section = (
+            section_number
+        )
+
+    return True
+
+
+def display_section_writing_tasks(
+    writing_tasks
+):
+    """
+    Display section-writing tasks.
+    """
+
+    print()
+    print("=" * 60)
+    print("SECTION WRITING TASKS")
+    print("=" * 60)
+
+    if not writing_tasks:
+        print(
+            "No section writing tasks available."
+        )
+        return
+
+    for task in writing_tasks:
+
+        print()
+
+        print(
+            f"Section  : "
+            f"{task['section_number']}"
+        )
+
+        print(
+            f"Heading  : "
+            f"{task['heading']}"
+        )
+
+        print(
+            f"Role     : "
+            f"{task['role']}"
+        )
+
+        print(
+            f"Claims   : "
+            f"{task['claim_ids']}"
+        )
+
+        print(
+            f"Purpose  : "
+            f"{task['purpose']}"
+        )
+
+        print(
+            f"Duration : "
+            f"{task['estimated_seconds']} sec"
+        )
+
+        print("Key Points:")
+
+        for point in task.get(
+            "key_points",
+            []
+        ):
+
+            print(
+                f"  - {point}"
+            )
+
+
+# ============================================================
+# End of Block 5A
+# ============================================================
+
+
+# ============================================================
+# Block 5B — AI Section Writer
+# ============================================================
+
+def build_section_writer_prompt(task):
+    """
+    Build a controlled Gemini prompt for writing one section.
+
+    The writer must stay strictly within the approved
+    section task and its claim IDs.
+    """
+
+    task_json = json.dumps(
+        task,
+        ensure_ascii=False,
+        indent=2
+    )
+
+    prompt = f"""
+You are the section-writing engine for a Hindi/Hinglish
+faceless YouTube channel called AI Khoj.
+
+Write ONLY the narration for the approved section below.
+
+STRICT RULES:
+
+1. Use ONLY the information present in the provided task.
+2. Do NOT invent facts, statistics, dates, names, examples,
+   technical specifications, or claims.
+3. Do NOT introduce any new factual claim.
+4. Preserve every claim ID exactly.
+5. The narration must support the listed claim IDs.
+6. Do NOT include citation markers, source numbers, reference markers, or bracketed IDs such as [1], [2], etc. inside the narration. Do NOT write source references such as "Source 1" or "(1)". Claim IDs must remain only in the JSON claim_ids field.
+7. Follow the provided purpose and key points.
+8. Write in natural Hindi/Hinglish.
+9. Use a documentary/educational storytelling tone.
+10. Make the narration engaging but fact-safe.
+11. Do not mention these instructions.
+12. Do not use Markdown headings.
+13. Return ONLY valid JSON.
+14. Do not add commentary outside JSON.
+
+APPROVED SECTION TASK:
+
+{task_json}
+
+Return JSON using exactly this structure:
+
+{{
+  "section_number": {task.get("section_number")},
+  "heading": "{task.get("heading")}",
+  "role": "{task.get("role")}",
+  "claim_ids": {json.dumps(task.get("claim_ids", []))},
+  "estimated_seconds": {task.get("estimated_seconds", 0)},
+  "narration": "string"
+}}
+"""
+
+    return prompt
+
+
+def call_gemini_section_writer(prompt):
+    """
+    Send one section-writing request to Gemini.
+
+    One Gemini call = one section.
+    """
+
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
+
+    if not api_key:
+        log(
+            "GEMINI_API_KEY not found.",
+            "ERROR"
+        )
+        return None
+
+    url = (
+        "https://generativelanguage.googleapis.com/"
+        "v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent"
+        f"?key={api_key}"
+    )
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.4,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    data = json.dumps(
+        payload
+    ).encode("utf-8")
+
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=60
+        ) as response:
+
+            response_data = json.loads(
+                response.read().decode(
+                    "utf-8"
+                )
+            )
+
+        text = (
+            response_data["candidates"][0]
+            ["content"]["parts"][0]["text"]
+        )
+
+        return text
+
+    except urllib.error.HTTPError as error:
+
+        log(
+            f"Gemini HTTP error: {error.code}",
+            "ERROR"
+        )
+
+        try:
+            error_body = (
+                error.read()
+                .decode("utf-8")
+            )
+
+            print(error_body)
+
+        except Exception:
+            pass
+
+        return None
+
+    except Exception as error:
+
+        log(
+            f"Gemini section writer failed: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def parse_section_writer_output(raw_text):
+    """
+    Parse Gemini section JSON.
+    """
+
+    if not raw_text:
+        return None
+
+    try:
+
+        result = json.loads(
+            raw_text
+        )
+
+        if not isinstance(
+            result,
+            dict
+        ):
+            return None
+
+        return result
+
+    except json.JSONDecodeError as error:
+
+        log(
+            f"Invalid section writer JSON: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def validate_section_writer_output(
+    result,
+    task
+):
+    """
+    Validate generated narration against
+    the original section-writing task.
+    """
+
+    if not isinstance(
+        result,
+        dict
+    ):
+        return False
+
+    if result.get(
+        "section_number"
+    ) != task.get(
+        "section_number"
+    ):
+        return False
+
+    if result.get(
+        "heading"
+    ) != task.get(
+        "heading"
+    ):
+        return False
+
+    if result.get(
+        "role"
+    ) != task.get(
+        "role"
+    ):
+        return False
+
+    if result.get(
+        "claim_ids"
+    ) != task.get(
+        "claim_ids"
+    ):
+        return False
+
+    if result.get(
+        "estimated_seconds"
+    ) != task.get(
+        "estimated_seconds"
+    ):
+        return False
+
+    narration = result.get(
+        "narration"
+    )
+
+    if not isinstance(
+        narration,
+        str
+    ):
+        return False
+
+    if not narration.strip():
+        return False
+
+    return True
+
+
+def write_script_sections(
+    writing_tasks
+):
+    """
+    Generate narration for every approved section.
+
+    Each section gets its own Gemini call.
+    """
+
+    if not isinstance(
+        writing_tasks,
+        list
+    ):
+        log(
+            "Invalid writing tasks.",
+            "ERROR"
+        )
+        return []
+
+    if not writing_tasks:
+        log(
+            "No writing tasks available.",
+            "ERROR"
+        )
+        return []
+
+    generated_sections = []
+
+    for task in writing_tasks:
+
+        log(
+            f"Writing section "
+            f"{task.get('section_number')}..."
+        )
+
+        prompt = build_section_writer_prompt(
+            task
+        )
+
+        raw_result = call_gemini_section_writer(
+            prompt
+        )
+
+        result = parse_section_writer_output(
+            raw_result
+        )
+
+        if not validate_section_writer_output(
+            result,
+            task
+        ):
+            log(
+                f"Section "
+                f"{task.get('section_number')} "
+                f"failed validation.",
+                "ERROR"
+            )
+            return []
+
+        generated_sections.append(
+            result
+        )
+
+        log(
+            f"Section "
+            f"{task.get('section_number')} "
+            f"generated successfully."
+        )
+
+    log(
+        f"Generated sections: "
+        f"{len(generated_sections)}"
+    )
+
+    return generated_sections
+
+
+def display_generated_sections(
+    generated_sections
+):
+    """
+    Display generated narration sections.
+    """
+
+    print()
+    print("=" * 60)
+    print("AI-GENERATED SCRIPT SECTIONS")
+    print("=" * 60)
+
+    if not generated_sections:
+        print(
+            "No generated sections available."
+        )
+        return
+
+    for section in generated_sections:
+
+        print()
+
+        print(
+            f"Section  : "
+            f"{section['section_number']}"
+        )
+
+        print(
+            f"Heading  : "
+            f"{section['heading']}"
+        )
+
+        print(
+            f"Role     : "
+            f"{section['role']}"
+        )
+
+        print(
+            f"Claims   : "
+            f"{section['claim_ids']}"
+        )
+
+        print(
+            f"Duration : "
+            f"{section['estimated_seconds']} sec"
+        )
+
+        print("Narration:")
+
+        print(
+            section["narration"]
+        )
+
+
+# ============================================================
+# End of Block 5B
+# ============================================================
+
+
+# ============================================================
+# Block 5C — Section Fact-Safety Review
+# ============================================================
+
+def build_section_safety_prompt(
+    generated_section,
+    writing_task
+):
+    """
+    Build a Gemini prompt to review generated narration
+    against the approved section task.
+    """
+
+    review_payload = {
+        "approved_task": writing_task,
+        "generated_section": generated_section
+    }
+
+    review_json = json.dumps(
+        review_payload,
+        ensure_ascii=False,
+        indent=2
+    )
+
+    prompt = f"""
+You are the fact-safety reviewer for the Hindi/Hinglish
+YouTube channel AI Khoj.
+
+Review the generated narration against the approved
+section task.
+
+STRICT RULES:
+
+1. Check whether the narration stays within the approved
+   claims and key points.
+2. Identify any new factual claim introduced by the writer.
+3. Do NOT judge writing style.
+4. Do NOT rewrite the narration.
+5. Do NOT add new facts.
+6. Claim IDs must remain unchanged.
+7. If the narration contains only information supported by
+   the approved task, mark it SAFE.
+8. If the narration introduces unsupported factual content,
+   mark it REVIEW.
+9. Return ONLY valid JSON.
+10. Do not use Markdown.
+11. Do not add commentary outside JSON.
+
+REVIEW DATA:
+
+{review_json}
+
+Return JSON using exactly this structure:
+
+{{
+  "section_number": {generated_section.get("section_number")},
+  "claim_ids": {json.dumps(generated_section.get("claim_ids", []))},
+  "status": "SAFE",
+  "issues": [],
+  "reason": "string"
+}}
+"""
+
+    return prompt
+
+
+def call_gemini_section_safety_review(
+    prompt
+):
+    """
+    Send one section to Gemini for fact-safety review.
+    """
+
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
+
+    if not api_key:
+        log(
+            "GEMINI_API_KEY not found.",
+            "ERROR"
+        )
+        return None
+
+    url = (
+        "https://generativelanguage.googleapis.com/"
+        "v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent"
+        f"?key={api_key}"
+    )
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    data = json.dumps(
+        payload
+    ).encode("utf-8")
+
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+
+    try:
+
+        with urllib.request.urlopen(
+            request,
+            timeout=60
+        ) as response:
+
+            response_data = json.loads(
+                response.read().decode(
+                    "utf-8"
+                )
+            )
+
+        text = (
+            response_data["candidates"][0]
+            ["content"]["parts"][0]["text"]
+        )
+
+        return text
+
+    except urllib.error.HTTPError as error:
+
+        log(
+            f"Gemini safety review HTTP error: "
+            f"{error.code}",
+            "ERROR"
+        )
+
+        try:
+
+            error_body = (
+                error.read()
+                .decode("utf-8")
+            )
+
+            print(error_body)
+
+        except Exception:
+            pass
+
+        return None
+
+    except Exception as error:
+
+        log(
+            f"Gemini safety review failed: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def parse_section_safety_review(
+    raw_text
+):
+    """
+    Parse Gemini safety review JSON.
+    """
+
+    if not raw_text:
+        return None
+
+    try:
+
+        result = json.loads(
+            raw_text
+        )
+
+        if not isinstance(
+            result,
+            dict
+        ):
+            return None
+
+        return result
+
+    except json.JSONDecodeError as error:
+
+        log(
+            f"Invalid safety review JSON: {error}",
+            "ERROR"
+        )
+
+        return None
+
+
+def validate_section_safety_review(
+    review,
+    generated_section
+):
+    """
+    Validate the structure of the safety review.
+    """
+
+    if not isinstance(
+        review,
+        dict
+    ):
+        return False
+
+    if review.get(
+        "section_number"
+    ) != generated_section.get(
+        "section_number"
+    ):
+        return False
+
+    if review.get(
+        "claim_ids"
+    ) != generated_section.get(
+        "claim_ids"
+    ):
+        return False
+
+    if review.get(
+        "status"
+    ) not in {
+        "SAFE",
+        "REVIEW"
+    }:
+        return False
+
+    if not isinstance(
+        review.get("issues"),
+        list
+    ):
+        return False
+
+    if not isinstance(
+        review.get("reason"),
+        str
+    ):
+        return False
+
+    if not review.get(
+        "reason"
+    ).strip():
+        return False
+
+    return True
+
+
+def review_generated_sections(
+    generated_sections,
+    writing_tasks
+):
+    """
+    Review every generated section for factual safety.
+    """
+
+    if not isinstance(
+        generated_sections,
+        list
+    ):
+        log(
+            "Invalid generated sections.",
+            "ERROR"
+        )
+        return []
+
+    if not isinstance(
+        writing_tasks,
+        list
+    ):
+        log(
+            "Invalid writing tasks.",
+            "ERROR"
+        )
+        return []
+
+    if len(
+        generated_sections
+    ) != len(
+        writing_tasks
+    ):
+        log(
+            "Generated sections and writing tasks "
+            "count mismatch.",
+            "ERROR"
+        )
+        return []
+
+    reviewed_sections = []
+
+    for generated_section, task in zip(
+        generated_sections,
+        writing_tasks
+    ):
+
+        log(
+            f"Reviewing section "
+            f"{generated_section.get('section_number')}..."
+        )
+
+        prompt = build_section_safety_prompt(
+            generated_section,
+            task
+        )
+
+        raw_review = (
+            call_gemini_section_safety_review(
+                prompt
+            )
+        )
+
+        review = parse_section_safety_review(
+            raw_review
+        )
+
+        if not validate_section_safety_review(
+            review,
+            generated_section
+        ):
+            log(
+                f"Section "
+                f"{generated_section.get('section_number')} "
+                f"safety review validation failed.",
+                "ERROR"
+            )
+            return []
+
+        reviewed_item = dict(
+            generated_section
+        )
+
+        reviewed_item["safety_status"] = (
+            review["status"]
+        )
+
+        reviewed_item["safety_issues"] = (
+            review["issues"]
+        )
+
+        reviewed_item["safety_reason"] = (
+            review["reason"]
+        )
+
+        reviewed_sections.append(
+            reviewed_item
+        )
+
+        log(
+            f"Section "
+            f"{generated_section.get('section_number')} "
+            f"safety status: "
+            f"{review['status']}"
+        )
+
+    log(
+        f"Safety-reviewed sections: "
+        f"{len(reviewed_sections)}"
+    )
+
+    return reviewed_sections
+
+
+def display_section_safety_reviews(
+    reviewed_sections
+):
+    """
+    Display safety review results.
+    """
+
+    print()
+    print("=" * 60)
+    print("SECTION FACT-SAFETY REVIEW")
+    print("=" * 60)
+
+    if not reviewed_sections:
+        print(
+            "No reviewed sections available."
+        )
+        return
+
+    for section in reviewed_sections:
+
+        print()
+
+        print(
+            f"Section : "
+            f"{section['section_number']}"
+        )
+
+        print(
+            f"Claims  : "
+            f"{section['claim_ids']}"
+        )
+
+        print(
+            f"Status  : "
+            f"{section['safety_status']}"
+        )
+
+        print(
+            f"Reason  : "
+            f"{section['safety_reason']}"
+        )
+
+        issues = section.get(
+            "safety_issues",
+            []
+        )
+
+        if issues:
+
+            print("Issues:")
+
+            for issue in issues:
+
+                print(
+                    f"  - {issue}"
+                )
+
+
+# ============================================================
+# End of Block 5C
 # ============================================================
 
 if __name__ == "__main__":
