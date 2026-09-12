@@ -1,26 +1,14 @@
 import os
 import glob
-import json
-import urllib.request
-import urllib.error
 from datetime import datetime
+from core.gemini_client import generate_text
 
 
 # ============================================================
 # AI KHOJ — TITLE + HOOK AGENT v1
 # ============================================================
 
-API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not API_KEY:
-    print("❌ GEMINI_API_KEY environment variable nahi mila.")
-    raise SystemExit(1)
-
-MODEL = "gemini-3.5-flash"
-API_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{MODEL}:generateContent?key={API_KEY}"
-)
 
 
 # ============================================================
@@ -132,58 +120,14 @@ RESEARCH REPORT:
 """
 
 
-payload = {
-    "contents": [
-        {
-            "parts": [
-                {
-                    "text": prompt
-                }
-            ]
-        }
-    ]
-}
-
-data = json.dumps(payload).encode("utf-8")
-
-request = urllib.request.Request(
-    API_URL,
-    data=data,
-    headers={
-        "Content-Type": "application/json"
-    },
-    method="POST"
-)
-
-
-print("\n🤖 Gemini titles aur hooks generate kar raha hai...")
-print("Please wait...\n")
-
-
-# ============================================================
-# API CALL
-# ============================================================
-
 try:
-    with urllib.request.urlopen(request, timeout=120) as response:
-        result = json.loads(response.read().decode("utf-8"))
-
-    output = result["candidates"][0]["content"]["parts"][0]["text"]
-
-except urllib.error.HTTPError as e:
-    print(f"❌ Gemini API HTTP Error: {e.code}")
-    try:
-        print(e.read().decode("utf-8"))
-    except Exception:
-        pass
-    raise SystemExit(1)
-
-except urllib.error.URLError as e:
-    print(f"❌ Network Error: {e.reason}")
-    raise SystemExit(1)
+    output = generate_text(
+        prompt,
+        timeout=120
+    )
 
 except Exception as e:
-    print(f"❌ Unexpected Error: {e}")
+    print(f"❌ Gemini generation error: {e}")
     raise SystemExit(1)
 
 
