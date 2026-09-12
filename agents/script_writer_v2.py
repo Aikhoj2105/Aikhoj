@@ -9,6 +9,7 @@ Block 1A — Foundation
 
 from pathlib import Path
 from datetime import datetime
+from core.gemini_client import generate_json
 
 
 FACT_CHECK_DIR = Path(
@@ -1986,7 +1987,6 @@ import urllib.request
 import urllib.error
 
 
-GEMINI_MODEL = "gemini-3.5-flash"
 
 
 def build_outline_prompt(story_plan):
@@ -2086,109 +2086,21 @@ Return JSON using exactly this structure:
 
 def call_gemini_outline(prompt):
     """
-    Send the outline-generation prompt to Gemini.
+    Send the outline-generation prompt to Gemini
+    through the central Gemini client.
     """
-
-    api_key = os.getenv(
-        "GEMINI_API_KEY"
-    )
-
-    if not api_key:
-        log(
-            "GEMINI_API_KEY not found.",
-            "ERROR"
-        )
-        return None
-
-    url = (
-        "https://generativelanguage.googleapis.com/"
-        "v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent"
-        f"?key={api_key}"
-    )
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.3,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    data = json.dumps(
-        payload
-    ).encode(
-        "utf-8"
-    )
-
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Content-Type": "application/json"
-        },
-        method="POST"
-    )
-
     try:
-
-        with urllib.request.urlopen(
-            request,
-            timeout=60
-        ) as response:
-
-            response_data = json.loads(
-                response.read().decode(
-                    "utf-8"
-                )
-            )
-
-        text = (
-            response_data
-            ["candidates"][0]
-            ["content"]["parts"][0]
-            ["text"]
+        return generate_json(
+            prompt,
+            timeout=60,
+            temperature=0.3
         )
-
-        return text
-
-    except urllib.error.HTTPError as error:
-
-        log(
-            f"Gemini HTTP error: "
-            f"{error.code}",
-            "ERROR"
-        )
-
-        try:
-            error_body = (
-                error.read()
-                .decode("utf-8")
-            )
-
-            print(error_body)
-
-        except Exception:
-            pass
-
-        return None
 
     except Exception as error:
-
         log(
-            f"Gemini request failed: "
-            f"{error}",
+            f"Gemini outline request failed: {error}",
             "ERROR"
         )
-
         return None
 
 
@@ -2904,104 +2816,23 @@ Return JSON using exactly this structure:
 
 def call_gemini_section_writer(prompt):
     """
-    Send one section-writing request to Gemini.
+    Send one section-writing request to Gemini
+    through the central Gemini client.
 
     One Gemini call = one section.
     """
-
-    api_key = os.getenv(
-        "GEMINI_API_KEY"
-    )
-
-    if not api_key:
-        log(
-            "GEMINI_API_KEY not found.",
-            "ERROR"
-        )
-        return None
-
-    url = (
-        "https://generativelanguage.googleapis.com/"
-        "v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent"
-        f"?key={api_key}"
-    )
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.4,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    data = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Content-Type": "application/json"
-        },
-        method="POST"
-    )
-
     try:
-        with urllib.request.urlopen(
-            request,
-            timeout=60
-        ) as response:
-
-            response_data = json.loads(
-                response.read().decode(
-                    "utf-8"
-                )
-            )
-
-        text = (
-            response_data["candidates"][0]
-            ["content"]["parts"][0]["text"]
+        return generate_json(
+            prompt,
+            timeout=60,
+            temperature=0.4
         )
-
-        return text
-
-    except urllib.error.HTTPError as error:
-
-        log(
-            f"Gemini HTTP error: {error.code}",
-            "ERROR"
-        )
-
-        try:
-            error_body = (
-                error.read()
-                .decode("utf-8")
-            )
-
-            print(error_body)
-
-        except Exception:
-            pass
-
-        return None
 
     except Exception as error:
-
         log(
             f"Gemini section writer failed: {error}",
             "ERROR"
         )
-
         return None
 
 
@@ -3309,105 +3140,21 @@ def call_gemini_section_safety_review(
     prompt
 ):
     """
-    Send one section to Gemini for fact-safety review.
+    Send one section to Gemini for fact-safety review
+    through the central Gemini client.
     """
-
-    api_key = os.getenv(
-        "GEMINI_API_KEY"
-    )
-
-    if not api_key:
-        log(
-            "GEMINI_API_KEY not found.",
-            "ERROR"
-        )
-        return None
-
-    url = (
-        "https://generativelanguage.googleapis.com/"
-        "v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent"
-        f"?key={api_key}"
-    )
-
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.1,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    data = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Content-Type": "application/json"
-        },
-        method="POST"
-    )
-
     try:
-
-        with urllib.request.urlopen(
-            request,
-            timeout=60
-        ) as response:
-
-            response_data = json.loads(
-                response.read().decode(
-                    "utf-8"
-                )
-            )
-
-        text = (
-            response_data["candidates"][0]
-            ["content"]["parts"][0]["text"]
+        return generate_json(
+            prompt,
+            timeout=60,
+            temperature=0.1
         )
-
-        return text
-
-    except urllib.error.HTTPError as error:
-
-        log(
-            f"Gemini safety review HTTP error: "
-            f"{error.code}",
-            "ERROR"
-        )
-
-        try:
-
-            error_body = (
-                error.read()
-                .decode("utf-8")
-            )
-
-            print(error_body)
-
-        except Exception:
-            pass
-
-        return None
 
     except Exception as error:
-
         log(
             f"Gemini safety review failed: {error}",
             "ERROR"
         )
-
         return None
 
 
