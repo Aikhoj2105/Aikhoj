@@ -7,94 +7,100 @@ from core.gemini_client import generate_text
 
 MODEL = "gemini-3.5-flash"
 
-topic = input("\n🎯 Video Topic: ").strip()
 
-if not topic:
-    print("❌ Topic खाली नहीं हो सकता.")
-    exit()
+def main():
+    topic = input("\n🎯 Video Topic: ").strip()
 
-prompt = f"""
-You are the Script Writer Agent for a Hindi/Hinglish YouTube channel called "AI Khoj".
+    if not topic:
+        print("❌ Topic खाली नहीं हो सकता.")
+        exit()
 
-Channel tagline:
-"AI की वो जानकारी जो आसानी से नहीं मिलती।"
+    prompt = f"""
+    You are the Script Writer Agent for a Hindi/Hinglish YouTube channel called "AI Khoj".
 
-Write a high-quality 8-10 minute faceless YouTube video script on:
+    Channel tagline:
+    "AI की वो जानकारी जो आसानी से नहीं मिलती।"
 
-TOPIC:
-{topic}
+    Write a high-quality 8-10 minute faceless YouTube video script on:
 
-Target audience:
-Beginners to intermediate AI users.
+    TOPIC:
+    {topic}
 
-Language:
-Natural Hinglish using simple Hindi + commonly used English AI/tech terms.
+    Target audience:
+    Beginners to intermediate AI users.
 
-Script structure:
+    Language:
+    Natural Hinglish using simple Hindi + commonly used English AI/tech terms.
 
-1. HOOK
-- 20-30 seconds
-- Create curiosity immediately
-- Do not use fake or exaggerated claims
+    Script structure:
 
-2. INTRO
-- Introduce the topic and why it matters
+    1. HOOK
+    - 20-30 seconds
+    - Create curiosity immediately
+    - Do not use fake or exaggerated claims
 
-3. MAIN EXPLANATION
-- Explain the concept simply
-- Use relatable examples
+    2. INTRO
+    - Introduce the topic and why it matters
 
-4. PRACTICAL EXAMPLES
-- Show how a normal person could actually use it
+    3. MAIN EXPLANATION
+    - Explain the concept simply
+    - Use relatable examples
 
-5. EXPERIMENT / DEMO
-- Suggest a practical screen-recording demonstration
+    4. PRACTICAL EXAMPLES
+    - Show how a normal person could actually use it
 
-6. REALITY CHECK
-- Explain limitations, risks, costs, or things that may not work
-- Never promise guaranteed results
+    5. EXPERIMENT / DEMO
+    - Suggest a practical screen-recording demonstration
 
-7. FINAL TAKEAWAY
-- Summarize the important points
+    6. REALITY CHECK
+    - Explain limitations, risks, costs, or things that may not work
+    - Never promise guaranteed results
 
-8. CTA
-- Natural YouTube CTA
-- Encourage viewers to subscribe to AI Khoj
+    7. FINAL TAKEAWAY
+    - Summarize the important points
 
-Also include [B-ROLL] and [SCREEN RECORDING] suggestions wherever useful.
+    8. CTA
+    - Natural YouTube CTA
+    - Encourage viewers to subscribe to AI Khoj
 
-Important rules:
-- Do not invent statistics, features, prices, or claims.
-- Clearly mark anything that needs verification.
-- No unnecessary repetition.
-- Keep the script engaging and conversational.
-- The final script should be ready for voice-over.
-"""
+    Also include [B-ROLL] and [SCREEN RECORDING] suggestions wherever useful.
 
-try:
-    script = generate_text(
-        prompt,
-        timeout=120
-    )
+    Important rules:
+    - Do not invent statistics, features, prices, or claims.
+    - Clearly mark anything that needs verification.
+    - No unnecessary repetition.
+    - Keep the script engaging and conversational.
+    - The final script should be ready for voice-over.
+    """
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"outputs/script_{timestamp}.md"
+    try:
+        script = generate_text(
+            prompt,
+            timeout=120
+        )
 
-    os.makedirs("outputs", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"outputs/script_{timestamp}.md"
 
-    with open(filename, "w", encoding="utf-8") as file:
-        file.write(f"# AI Khoj YouTube Script\n\n")
-        file.write(f"**Topic:** {topic}\n\n")
-        file.write("---\n\n")
-        file.write(script)
+        os.makedirs("outputs", exist_ok=True)
 
-    print("\n✅ Script successfully generated!")
-    print(f"📄 Saved to: {filename}")
+        with open(filename, "w", encoding="utf-8") as file:
+            file.write(f"# AI Khoj YouTube Script\n\n")
+            file.write(f"**Topic:** {topic}\n\n")
+            file.write("---\n\n")
+            file.write(script)
 
-    print("\n" + "=" * 60)
-    print(script)
-    print("=" * 60)
+        print("\n✅ Script successfully generated!")
+        print(f"📄 Saved to: {filename}")
 
-except Exception as e:
-    print("\n❌ Error:")
-    print(e)
+        print("\n" + "=" * 60)
+        print(script)
+        print("=" * 60)
+
+    except Exception as e:
+        print("\n❌ Error:")
+        print(e)
+
+
+if __name__ == "__main__":
+    main()
