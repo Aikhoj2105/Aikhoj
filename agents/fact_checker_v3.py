@@ -38,7 +38,6 @@ except ImportError as e:
 # Configuration
 # -----------------------------------------
 
-MODEL_NAME = "gemini-3.5-flash"
 
 RESEARCH_FOLDER = "outputs/research"
 
