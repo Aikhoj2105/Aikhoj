@@ -3,14 +3,9 @@ import urllib.request
 import urllib.parse
 import json
 from datetime import datetime
+from core.gemini_client import generate_text
 
 MODEL = "gemini-3.5-flash"
-API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not API_KEY:
-    print("❌ GEMINI_API_KEY नहीं मिला.")
-    print("पहले export GEMINI_API_KEY='your-key' चलाएं.")
-    exit()
 
 topic = input("\n🎯 Video Topic: ").strip()
 
@@ -76,33 +71,11 @@ Important rules:
 - The final script should be ready for voice-over.
 """
 
-url = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{MODEL}:generateContent?key={urllib.parse.quote(API_KEY)}"
-)
-
-data = {
-    "contents": [
-        {
-            "parts": [
-                {"text": prompt}
-            ]
-        }
-    ]
-}
-
 try:
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST"
+    script = generate_text(
+        prompt,
+        timeout=120
     )
-
-    with urllib.request.urlopen(request, timeout=120) as response:
-        result = json.loads(response.read().decode("utf-8"))
-
-    script = result["candidates"][0]["content"]["parts"][0]["text"]
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"outputs/script_{timestamp}.md"
