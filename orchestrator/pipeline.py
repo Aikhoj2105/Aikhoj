@@ -117,6 +117,12 @@ class AIKhojOrchestrator:
 
             output_path = str(output)
 
+            if not Path(output_path).exists():
+                raise FileNotFoundError(
+                    f"Stage '{stage}' returned a missing output file: "
+                    f"{output_path}"
+                )
+
             return self.record_result(
                 stage,
                 "success",
