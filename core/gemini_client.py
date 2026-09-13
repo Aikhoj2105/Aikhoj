@@ -99,6 +99,19 @@ def _generate(prompt, timeout=120, temperature=None, response_mime_type=None):
                 "utf-8",
                 errors="ignore"
             )
+            retry_delay = None
+
+            try:
+                error_json = json.loads(error_body)
+                details = error_json.get("error", {}).get("details", [])
+
+                for detail in details:
+                    if detail.get("@type", "").endswith("RetryInfo"):
+                        retry_delay = detail.get("retryDelay")
+                        break
+
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                pass
 
             last_error = RuntimeError(
                 f"Gemini API HTTP {e.code}: {error_body}"
@@ -112,6 +125,13 @@ def _generate(prompt, timeout=120, temperature=None, response_mime_type=None):
                 raise last_error
 
             wait_time = INITIAL_BACKOFF * (2 ** attempt)
+
+            if e.code == 429 and retry_delay:
+                try:
+                    retry_seconds = float(retry_delay.rstrip('s'))
+                    wait_time = retry_seconds
+                except (ValueError, TypeError):
+                    pass
 
             print(
                 f"⚠️ Gemini HTTP {e.code}. "
