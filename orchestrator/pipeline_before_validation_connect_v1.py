@@ -150,11 +150,6 @@ class AIKhojOrchestrator:
                     f"{output_path}"
                 )
 
-            validated_path = self.validate_artifact(
-                stage,
-                output_path,
-            )
-
             return self.record_result(
                 stage,
                 "success",

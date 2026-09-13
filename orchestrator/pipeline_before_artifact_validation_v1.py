@@ -49,33 +49,6 @@ class AIKhojOrchestrator:
             "script",
         ]
 
-    def validate_artifact(self, stage, output_path):
-        """Validate that a stage produced a usable artifact."""
-
-        if output_path is None:
-            raise ValueError(
-                f"Stage '{stage}' produced no output."
-            )
-
-        path = Path(output_path)
-
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Stage '{stage}' output does not exist: {path}"
-            )
-
-        if not path.is_file():
-            raise TypeError(
-                f"Stage '{stage}' output is not a file: {path}"
-            )
-
-        if path.stat().st_size == 0:
-            raise ValueError(
-                f"Stage '{stage}' output file is empty: {path}"
-            )
-
-        return path
-
     def record_result(self, stage, status, output_path=None, error=None):
         result = StageResult(
             stage=stage,
@@ -149,11 +122,6 @@ class AIKhojOrchestrator:
                     f"Stage '{stage}' returned a missing output file: "
                     f"{output_path}"
                 )
-
-            validated_path = self.validate_artifact(
-                stage,
-                output_path,
-            )
 
             return self.record_result(
                 stage,
