@@ -640,38 +640,42 @@ def parse_rss_sources(rss_data):
 
 def extract_research_source_url(research_text=None):
     """
-    Extract the original article URL from the latest research report.
-    Supports both:
+    Extract the original article URL from a research report.
+
+    If research_text is supplied, extract the URL directly from that text.
+    Otherwise, fall back to reading the latest research report file.
+    Supports:
     1. SOURCE URL:
        https://example.com
     2. **Source:** https://example.com
+    3. Source: https://example.com
     """
 
-    latest_report = find_latest_research()
+    if research_text is None:
+        latest_report = find_latest_research()
 
-    if not latest_report:
-        log("No research report found.", "WARNING")
-        return None
+        if not latest_report:
+            log("No research report found.", "WARNING")
+            return None
 
-    try:
-        with open(
-            latest_report,
-            "r",
-            encoding="utf-8"
-        ) as f:
-            content = f.read()
+        try:
+            with open(
+                latest_report,
+                "r",
+                encoding="utf-8"
+            ) as f:
+                research_text = f.read()
 
-    except Exception as e:
-        log(
-            f"Could not read research report: {e}",
-            "ERROR"
-        )
-        return None
+        except Exception as e:
+            log(
+                f"Could not read research report: {e}",
+                "ERROR"
+            )
+            return None
 
-    lines = content.splitlines()
+    lines = research_text.splitlines()
 
     for index, line in enumerate(lines):
-
         clean_line = line.strip()
 
         # Format 1:
