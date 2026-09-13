@@ -1095,6 +1095,7 @@ def main():
     log(
         "✅ Block 7 — Final Script Assembly pipeline passed"
     )
+    return export_result
 
 
 # ============================================================

@@ -2829,6 +2829,7 @@ def main():
         print()
 
         print("✅ Block 3 Ready")
+        return report_path
 
 
 

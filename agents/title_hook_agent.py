@@ -176,6 +176,8 @@ def main():
     print("=" * 55)
 
     print("\n" + output)
+    return output_file
+
 
 
 if __name__ == "__main__":
