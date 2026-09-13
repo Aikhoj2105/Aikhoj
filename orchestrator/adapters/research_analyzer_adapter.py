@@ -50,10 +50,22 @@ def read_article_file(article_file):
     return article_text
 
 
-def analyze_from_research(research_file):
-    """Analyze the latest article and persist the analysis output."""
+def analyze_from_research(research_file, article_file=None):
+    """Analyze the supplied article and persist the analysis output.
 
-    article_file = find_latest_article()
+    If article_file is omitted, fall back to the latest article
+    for backward compatibility.
+    """
+    if article_file is None:
+        article_file = find_latest_article()
+
+    article_file = Path(article_file)
+
+    if not article_file.exists():
+        raise FileNotFoundError(
+            f"Article file not found: {article_file}"
+        )
+
     article_text = read_article_file(article_file)
     source_url = extract_source_url(research_file)
 

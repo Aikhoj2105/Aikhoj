@@ -262,10 +262,17 @@ class AIKhojOrchestrator:
                     "Research output is unavailable for Article Extraction."
                 )
 
-            return (
+            self.article_output = (
                 article_extractor_adapter
                 .extract_and_save_from_research(self.research_output)
             )
+
+            if self.article_output is None:
+                raise RuntimeError(
+                    "Article Extraction failed to produce an output."
+                )
+
+            return self.article_output
 
         def run_analysis():
             if self.research_output is None:
@@ -273,9 +280,17 @@ class AIKhojOrchestrator:
                     "Research output is unavailable for Analysis."
                 )
 
+            if self.article_output is None:
+                raise RuntimeError(
+                    "Article output is unavailable for Analysis."
+                )
+
             return (
                 research_analyzer_adapter
-                .analyze_from_research(self.research_output)
+                .analyze_from_research(
+                    self.research_output,
+                    self.article_output,
+                )
             )
 
         return {
