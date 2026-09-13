@@ -10,6 +10,7 @@ Current version:
 """
 
 from datetime import datetime
+import json
 from dataclasses import dataclass
 from typing import Optional
 from pathlib import Path
@@ -59,15 +60,69 @@ class AIKhojOrchestrator:
         self.results.append(result)
         return result
 
+    def save_run_manifest(self):
+        """Save the current pipeline run state as a JSON manifest."""
+
+        manifest_dir = Path("outputs/pipeline_runs")
+        manifest_dir.mkdir(parents=True, exist_ok=True)
+
+        run_id = self.started_at.strftime("%Y%m%d_%H%M%S_%f")
+
+        if any(result.status == "failed" for result in self.results):
+            pipeline_status = "failed"
+        elif len(self.results) == len(self.stages):
+            pipeline_status = "success"
+        else:
+            pipeline_status = "incomplete"
+
+        manifest = {
+            "run_id": run_id,
+            "started_at": self.started_at.isoformat(),
+            "finished_at": datetime.now().isoformat(),
+            "status": pipeline_status,
+            "stages": [
+                {
+                    "stage": result.stage,
+                    "status": result.status,
+                    "output_path": result.output_path,
+                    "error": result.error,
+                    "timestamp": result.timestamp,
+                }
+                for result in self.results
+            ],
+        }
+
+        manifest_path = manifest_dir / f"run_{run_id}.json"
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2),
+            encoding="utf-8",
+        )
+
+        return manifest_path
+
     def run_stage(self, stage, func):
         try:
             output = func()
-            output_path = output if isinstance(output, (str, Path)) else None
+
+            if output is None:
+                raise RuntimeError(
+                    f"Stage '{stage}' returned no output."
+                )
+
+            if not isinstance(output, (str, Path)):
+                raise TypeError(
+                    f"Stage '{stage}' returned unsupported output type: "
+                    f"{type(output).__name__}"
+                )
+
+            output_path = str(output)
+
             return self.record_result(
                 stage,
                 "success",
                 output_path=output_path,
             )
+
         except Exception as exc:
             return self.record_result(
                 stage,
@@ -181,6 +236,7 @@ class AIKhojOrchestrator:
             if result.status != "success":
                 break
 
+        self.save_run_manifest()
         return self.results
 
     def build_stage_functions(self):
