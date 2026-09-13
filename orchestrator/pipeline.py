@@ -184,26 +184,50 @@ class AIKhojOrchestrator:
         return self.results
 
     def build_stage_functions(self):
-        """Build the real adapter mapping for the pipeline."""
+        """Build the real adapter mapping for the pipeline.
+
+        Research is resolved once and its output is reused by
+        downstream stages that require the research artifact.
+        """
+
+        def run_research():
+            self.research_output = get_latest_research()
+
+            if self.research_output is None:
+                raise RuntimeError(
+                    "Research stage failed to produce an output."
+                )
+
+            return self.research_output
+
+        def run_article_extraction():
+            if self.research_output is None:
+                raise RuntimeError(
+                    "Research output is unavailable for Article Extraction."
+                )
+
+            return (
+                article_extractor_adapter
+                .extract_and_save_from_research(self.research_output)
+            )
+
+        def run_analysis():
+            if self.research_output is None:
+                raise RuntimeError(
+                    "Research output is unavailable for Analysis."
+                )
+
+            return (
+                research_analyzer_adapter
+                .analyze_from_research(self.research_output)
+            )
+
         return {
-            "research": get_latest_research,
-
-            "article_extraction": (
-                lambda: article_extractor_adapter.extract_and_save_from_research(
-                    get_latest_research()
-                )
-            ),
-
-            "analysis": (
-                lambda: research_analyzer_adapter.analyze_from_research(
-                    get_latest_research()
-                )
-            ),
-
+            "research": run_research,
+            "article_extraction": run_article_extraction,
+            "analysis": run_analysis,
             "fact_check": fact_checker_adapter.run_fact_check,
-
             "title_hook": title_hook_adapter.generate_title_hook,
-
             "script": script_writer_adapter.generate_script,
         }
 
