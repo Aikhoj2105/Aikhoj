@@ -40,6 +40,15 @@ class AIKhojOrchestrator:
     def __init__(self):
         self.started_at = datetime.now()
         self.results = []
+
+        # Explicit artifact handoff state
+        self.research_output = None
+        self.article_output = None
+        self.analysis_output = None
+        self.fact_check_output = None
+        self.title_hook_output = None
+        self.script_output = None
+
         self.stages = [
             "research",
             "article_extraction",
@@ -323,7 +332,7 @@ class AIKhojOrchestrator:
                     "Article output is unavailable for Analysis."
                 )
 
-            return (
+            self.analysis_output = (
                 research_analyzer_adapter
                 .analyze_from_research(
                     self.research_output,
@@ -331,13 +340,74 @@ class AIKhojOrchestrator:
                 )
             )
 
+            if self.analysis_output is None:
+                raise RuntimeError(
+                    "Analysis failed to produce an output."
+                )
+
+            return self.analysis_output
+
+        def run_fact_check():
+            if self.research_output is None:
+                raise RuntimeError(
+                    "Research output is unavailable for Fact Checker."
+                )
+
+            self.fact_check_output = (
+                fact_checker_adapter
+                .run_fact_check(self.research_output)
+            )
+
+            if self.fact_check_output is None:
+                raise RuntimeError(
+                    "Fact Checker failed to produce an output."
+                )
+
+            return self.fact_check_output
+
+        def run_title_hook():
+            if self.research_output is None:
+                raise RuntimeError(
+                    "Research output is unavailable for Title + Hook."
+                )
+
+            self.title_hook_output = (
+                title_hook_adapter
+                .generate_title_hook(self.research_output)
+            )
+
+            if self.title_hook_output is None:
+                raise RuntimeError(
+                    "Title + Hook failed to produce an output."
+                )
+
+            return self.title_hook_output
+
+        def run_script():
+            if self.fact_check_output is None:
+                raise RuntimeError(
+                    "Fact-check output is unavailable for Script Writer."
+                )
+
+            self.script_output = (
+                script_writer_adapter
+                .generate_script(self.fact_check_output)
+            )
+
+            if self.script_output is None:
+                raise RuntimeError(
+                    "Script Writer failed to produce an output."
+                )
+
+            return self.script_output
+
         return {
             "research": run_research,
             "article_extraction": run_article_extraction,
             "analysis": run_analysis,
-            "fact_check": fact_checker_adapter.run_fact_check,
-            "title_hook": title_hook_adapter.generate_title_hook,
-            "script": script_writer_adapter.generate_script,
+            "fact_check": run_fact_check,
+            "title_hook": run_title_hook,
+            "script": run_script,
         }
 
     def show_results(self):

@@ -9,7 +9,7 @@ and the existing Title + Hook agent.
 from agents import title_hook_agent
 
 
-def generate_title_hook():
+def generate_title_hook(research_file=None):
     """Run the existing Title + Hook agent through the adapter.
 
     The legacy agent uses SystemExit(1) for internal failures.
@@ -17,7 +17,7 @@ def generate_title_hook():
     its fail-fast stage contract.
     """
     try:
-        result = title_hook_agent.main()
+        result = title_hook_agent.main(research_file)
     except SystemExit as exc:
         raise RuntimeError(
             f"Title + Hook Agent failed with exit code {exc.code}"

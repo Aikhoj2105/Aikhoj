@@ -606,7 +606,7 @@ def display_narrative_plan(narrative_plan):
             f"{item['claim']}"
         )
 
-def main():
+def main(fact_check_file=None):
     banner()
 
     print()
@@ -618,7 +618,11 @@ def main():
 
     ensure_output_folder()
 
-    report_path = find_latest_fact_check()
+    report_path = (
+        fact_check_file
+        if fact_check_file is not None
+        else find_latest_fact_check()
+    )
 
     if report_path is None:
         log(

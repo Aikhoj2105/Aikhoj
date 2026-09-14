@@ -2667,7 +2667,7 @@ def display_script_ready_claims(
 
     print("-" * 60)
 
-def main():
+def main(research_file=None):
         banner()
 
         ensure_output_folder()
@@ -2682,7 +2682,8 @@ def main():
         # Research
         # -------------------------------------
 
-        research_file = find_latest_research()
+        if research_file is None:
+            research_file = find_latest_research()
 
         if not research_file:
 

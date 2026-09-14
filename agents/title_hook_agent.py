@@ -16,7 +16,7 @@ from core.gemini_client import generate_text
 # ============================================================
 
 
-def main():
+def main(research_file=None):
     research_files = glob.glob("outputs/research/research_*.md")
 
     if not research_files:
@@ -24,7 +24,7 @@ def main():
         print("Pehle Research Analyzer run karo.")
         raise SystemExit(1)
 
-    latest_report = max(research_files, key=os.path.getmtime)
+    latest_report = str(research_file) if research_file is not None else max(research_files, key=os.path.getmtime)
 
     print("🎯 AI KHOJ — TITLE + HOOK AGENT v1")
     print("=" * 55)
