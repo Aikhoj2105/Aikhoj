@@ -10,6 +10,7 @@ Current version:
 """
 
 from datetime import datetime
+import sys
 import json
 from dataclasses import dataclass
 from typing import Optional
@@ -371,9 +372,17 @@ class AIKhojOrchestrator:
                     "Research output is unavailable for Title + Hook."
                 )
 
+            if self.fact_check_output is None:
+                raise RuntimeError(
+                    "Fact-check output is unavailable for Title + Hook."
+                )
+
             self.title_hook_output = (
                 title_hook_adapter
-                .generate_title_hook(self.research_output)
+                .generate_title_hook(
+                    self.research_output,
+                    self.fact_check_output,
+                )
             )
 
             if self.title_hook_output is None:
@@ -389,9 +398,17 @@ class AIKhojOrchestrator:
                     "Fact-check output is unavailable for Script Writer."
                 )
 
+            if self.title_hook_output is None:
+                raise RuntimeError(
+                    "Title + Hook output is unavailable for Script Writer."
+                )
+
             self.script_output = (
                 script_writer_adapter
-                .generate_script(self.fact_check_output)
+                .generate_script(
+                    self.fact_check_output,
+                    self.title_hook_output,
+                )
             )
 
             if self.script_output is None:
@@ -437,7 +454,7 @@ class AIKhojOrchestrator:
         print("=" * 60)
 
         for number, stage in enumerate(self.stages, start=1):
-            print(f"[{number}/5] {stage}")
+            print(f"[{number}/{len(self.stages)}] {stage}")
 
         print("=" * 60)
 
@@ -445,6 +462,15 @@ class AIKhojOrchestrator:
 def main():
     orchestrator = AIKhojOrchestrator()
     orchestrator.show_pipeline()
+    stage_functions = orchestrator.build_stage_functions()
+
+    if "--dry-run" in sys.argv:
+        orchestrator.dry_run_pipeline(stage_functions)
+        return
+
+    orchestrator.run_pipeline(stage_functions)
+
+
 
 
 if __name__ == "__main__":

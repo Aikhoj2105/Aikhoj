@@ -606,7 +606,7 @@ def display_narrative_plan(narrative_plan):
             f"{item['claim']}"
         )
 
-def main(fact_check_file=None):
+def main(fact_check_file=None, title_hook_file=None):
     banner()
 
     print()
@@ -739,6 +739,17 @@ def main(fact_check_file=None):
     # Block 4A — Outline Generator Foundation
     # --------------------------------------------------------
 
+    title_hook_package = (
+        load_title_hook_package(title_hook_file)
+        if title_hook_file is not None
+        else None
+    )
+
+    if title_hook_package is not None:
+        log(
+            "✅ Title + Hook Best Package loaded"
+        )
+
     outline = build_outline_foundation(
         story_plan
     )
@@ -764,7 +775,8 @@ def main(fact_check_file=None):
     # --------------------------------------------------------
 
     outline_prompt = build_outline_prompt(
-        story_plan
+        story_plan,
+        title_hook_package,
     )
 
     raw_ai_outline = call_gemini_outline(
@@ -1994,7 +2006,96 @@ import urllib.error
 
 
 
-def build_outline_prompt(story_plan):
+
+def load_title_hook_package(title_hook_file):
+    """
+    Load the selected Best Package from the Title + Hook report.
+
+    This parser intentionally extracts only presentation/package fields.
+    It does NOT treat Title + Hook as a factual authority.
+    """
+    if title_hook_file is None:
+        return None
+
+    path = Path(str(title_hook_file))
+
+    if not path.is_file():
+        raise RuntimeError(
+            f"Title + Hook report not found: {path}"
+        )
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except Exception as error:
+        raise RuntimeError(
+            f"Title + Hook report could not be read: {error}"
+        ) from error
+
+    package = {
+        "best_title": "",
+        "best_hook": "",
+        "best_thumbnail_text": "",
+        "reason": "",
+    }
+
+    lines = text.splitlines()
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+
+        if stripped.startswith("Best Title:"):
+            package["best_title"] = stripped.split(
+                ":", 1
+            )[1].strip()
+
+        elif stripped.startswith("Best Hook:"):
+            package["best_hook"] = stripped.split(
+                ":", 1
+            )[1].strip()
+
+        elif stripped.startswith("Best Thumbnail Text:"):
+            package["best_thumbnail_text"] = stripped.split(
+                ":", 1
+            )[1].strip()
+
+        elif stripped.startswith("REASON:"):
+            reason_lines = []
+
+            for following in lines[index + 1:]:
+                value = following.strip()
+
+                if not value:
+                    continue
+
+                if value.startswith(
+                    ("TITLE OPTIONS", "HOOK OPTIONS", "THUMBNAIL TEXT")
+                ):
+                    break
+
+                reason_lines.append(value)
+
+            package["reason"] = " ".join(reason_lines).strip()
+
+    if not package["best_title"]:
+        raise RuntimeError(
+            "Title + Hook report does not contain Best Title."
+        )
+
+    if not package["best_hook"]:
+        raise RuntimeError(
+            "Title + Hook report does not contain Best Hook."
+        )
+
+    if not package["best_thumbnail_text"]:
+        raise RuntimeError(
+            "Title + Hook report does not contain "
+            "Best Thumbnail Text."
+        )
+
+    return package
+
+
+def build_outline_prompt(story_plan, title_hook_package=None):
     """
     Build a strict Gemini prompt for outline generation.
 
@@ -2040,6 +2141,12 @@ def build_outline_prompt(story_plan):
         indent=2
     )
 
+    packaging_direction = json.dumps(
+        title_hook_package or {},
+        ensure_ascii=False,
+        indent=2
+    )
+
     prompt = f"""
 You are the outline planning engine for a Hindi/Hinglish
 faceless YouTube channel called AI Khoj.
@@ -2065,6 +2172,16 @@ STRICT RULES:
 APPROVED STORY PLAN:
 
 {claims_json}
+
+PACKAGING DIRECTION — TITLE + HOOK BEST PACKAGE:
+{packaging_direction}
+
+IMPORTANT PACKAGING RULES:
+- Treat the Fact Check / approved claims as the factual authority.
+- Use the Title + Hook package only for presentation, curiosity, hook direction, and audience promise.
+- Do NOT introduce any factual claim from the packaging package unless it is supported by the approved story plan.
+- Do NOT copy unsupported claims, statistics, dates, names, or promises from the packaging package.
+- The final outline must remain fully traceable to approved claim IDs.
 
 Return JSON using exactly this structure:
 

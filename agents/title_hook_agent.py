@@ -16,7 +16,7 @@ from core.gemini_client import generate_text
 # ============================================================
 
 
-def main(research_file=None):
+def main(research_file=None, fact_check_file=None):
     research_files = glob.glob("outputs/research/research_*.md")
 
     if not research_files:
@@ -25,6 +25,10 @@ def main(research_file=None):
         raise SystemExit(1)
 
     latest_report = str(research_file) if research_file is not None else max(research_files, key=os.path.getmtime)
+
+    if not os.path.isfile(latest_report):
+        print(f"❌ Research report nahi mili: {latest_report}")
+        raise SystemExit(1)
 
     print("🎯 AI KHOJ — TITLE + HOOK AGENT v1")
     print("=" * 55)
@@ -45,6 +49,29 @@ def main(research_file=None):
 
     print(f"📊 Research characters: {len(research)}")
 
+
+    # ============================================================
+    # READ FACT CHECK
+    # ============================================================
+    fact_check = ""
+
+    if fact_check_file is not None:
+        fact_check_path = str(fact_check_file)
+
+        if not os.path.isfile(fact_check_path):
+            print(f"❌ Fact-check report nahi mili: {fact_check_path}")
+            raise SystemExit(1)
+
+        try:
+            with open(fact_check_path, "r", encoding="utf-8") as file:
+                fact_check = file.read()
+        except Exception as e:
+            print(f"❌ Fact-check report read nahi ho payi: {e}")
+            raise SystemExit(1)
+
+        print("📄 Fact-check report:")
+        print(fact_check_path)
+        print(f"📊 Fact-check characters: {len(fact_check)}")
 
     # ============================================================
     # GEMINI REQUEST
@@ -119,6 +146,11 @@ def main(research_file=None):
     ----------------
     {research}
     ----------------
+
+FACT CHECK REPORT:
+                                               ----------------
+                                               {fact_check}
+                                               ----------------
     """
 
 
