@@ -12,6 +12,7 @@ Current version:
 from datetime import datetime
 import sys
 import json
+import re
 from dataclasses import dataclass
 from typing import Optional
 from pathlib import Path
@@ -23,6 +24,8 @@ from orchestrator.adapters import (
     title_hook_adapter,
     script_writer_adapter,
 )
+from core.content_package_builder import build_content_package
+from core.content_package_validator import validate_content_package
 
 
 @dataclass
@@ -49,6 +52,7 @@ class AIKhojOrchestrator:
         self.fact_check_output = None
         self.title_hook_output = None
         self.script_output = None
+        self.content_package_output = None
 
         self.stages = [
             "research",
@@ -57,6 +61,7 @@ class AIKhojOrchestrator:
             "fact_check",
             "title_hook",
             "script",
+            "content_package",
         ]
 
     def validate_artifact(self, stage, output_path):
@@ -279,13 +284,128 @@ class AIKhojOrchestrator:
                 )
                 break
 
-            result = self.run_stage(stage, func)
-
+            if stage == "content_package":
+                result = self.run_content_package_stage()
+            else:
+                result = self.run_stage(stage, func)
             if result.status != "success":
                 break
 
         self.save_run_manifest()
         return self.results
+
+    def run_content_package_stage(self):
+        """Run the Content Package stage and record its directory output."""
+
+        try:
+            output = self.run_content_package()
+
+            if output is None:
+                raise RuntimeError("Content Package stage returned no output.")
+
+            output_path = Path(output)
+
+            if not output_path.is_dir():
+                raise TypeError(
+                    "Content Package output must be a directory: "
+                    f"{output_path}"
+                )
+
+            return self.record_result(
+                "content_package",
+                "success",
+                output_path=output_path,
+            )
+
+        except Exception as exc:
+            return self.record_result(
+                "content_package",
+                "failed",
+                error=str(exc),
+            )
+
+    def extract_content_metadata(self, research_file):
+        """Extract deterministic package metadata from research output."""
+
+        research_path = Path(research_file)
+
+        if not research_path.is_file():
+            raise FileNotFoundError(
+                f"Research file not found: {research_path}"
+            )
+
+        text = research_path.read_text(encoding="utf-8")
+
+        source_match = re.search(
+            r"^\*\*Source:\*\*\s*(https?://\S+)",
+            text,
+            re.MULTILINE,
+        )
+
+        if not source_match:
+            raise ValueError(
+                "Source URL not found in research report."
+            )
+
+        source_url = source_match.group(1).strip()
+
+        program_match = re.search(
+            r"\*\s*\*\*Program Name:\*\*\s*([^\n]+)",
+            text,
+        )
+
+        if program_match:
+            topic_title = program_match.group(1).strip()
+            topic_title = topic_title.split(" (", 1)[0].strip()
+        else:
+            topic_title = "AI Khoj Topic"
+
+        return {
+            "topic_title": topic_title,
+            "source_url": source_url,
+            "category": "ai",
+        }
+
+    def run_content_package(self):
+        """Build and validate the final Content Package."""
+
+        required_outputs = {
+            "research": self.research_output,
+            "article": self.article_output,
+            "analysis": self.analysis_output,
+            "fact_check": self.fact_check_output,
+            "title_hook": self.title_hook_output,
+            "script": self.script_output,
+        }
+
+        for name, output in required_outputs.items():
+            if output is None:
+                raise RuntimeError(
+                    f"{name.replace('_', ' ').title()} output is "
+                    "unavailable for Content Package."
+                )
+
+        metadata = self.extract_content_metadata(
+            self.research_output
+        )
+
+        package_dir = build_content_package(
+            research_file=self.research_output,
+            article_file=self.article_output,
+            analysis_file=self.analysis_output,
+            fact_check_file=self.fact_check_output,
+            title_hook_file=self.title_hook_output,
+            script_file=self.script_output,
+            topic_title=metadata["topic_title"],
+            source_url=metadata["source_url"],
+            category=metadata["category"],
+        )
+
+        validate_content_package(package_dir)
+
+        self.content_package_output = package_dir
+
+        return package_dir
 
     def build_stage_functions(self):
         """Build the real adapter mapping for the pipeline.
@@ -425,6 +545,7 @@ class AIKhojOrchestrator:
             "fact_check": run_fact_check,
             "title_hook": run_title_hook,
             "script": run_script,
+            "content_package": self.run_content_package,
         }
 
     def show_results(self):
